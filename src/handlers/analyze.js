@@ -5,7 +5,10 @@ const { DetectDocumentTextCommand } = require('@aws-sdk/client-textract');
 const { v4: uuidv4 } = require('uuid');
 const { docClient, s3Client, textractClient, isLocal } = require('../lib/aws');
 
+const { PDFParse } = require('pdf-parse');
+
 const corsHeaders = {
+  'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
   'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
@@ -150,7 +153,10 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
   }
 
   // Check 3: Rent / Lease Agreement
-  if (textLower.includes('rent') || textLower.includes('lease') || textLower.includes('landlord') || textLower.includes('tenant') || textLower.includes('licensor') || textLower.includes('licensee')) {
+  if (
+    /\b(rent agreement|rental|lease|tenant|tenancy|landlord|licensor|licensee)\b/i.test(rawText) ||
+    (/\brent\b/i.test(rawText) && /\b(premises|deposit|flat|apartment|house|monthly|maintenance)\b/i.test(rawText))
+  ) {
     if (lang === 'bengali') {
       return {
         summary: [
@@ -335,6 +341,81 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
     }
   }
 
+  // Check 6: Academic Assignment / Educational Document
+  if (
+    textLower.includes('assignment') || 
+    textLower.includes('roll no') || 
+    textLower.includes('operating system') || 
+    textLower.includes('lab manual') || 
+    textLower.includes('syllabus') || 
+    textLower.includes('semester') || 
+    textLower.includes('practical')
+  ) {
+    const rawLines = rawText.split('\n').filter(l => l.trim().length > 2);
+    const titleLine = rawLines[0] || 'Academic Assignment';
+    const subTitle = rawLines[1] || 'Coursework Submission';
+    const authorLine = rawLines[2] || 'Student Submission';
+
+    if (lang === 'bengali') {
+      return {
+        summary: [
+          `এটি একটি শিক্ষামূলক অ্যাসাইনমেন্ট বা অ্যাকাডেমিক নথি: "${titleLine}"।`,
+          `বিষয়বস্তু ও বিবরণ: ${subTitle}।`,
+          `শিক্ষার্থী/লেখক তথ্য: ${authorLine}।`,
+          `নথিটিতে কম্পিউটার সায়েন্স ও অপারেটিং সিস্টেম সংক্রান্ত কারিগরি ও তাত্ত্বিক বিষয়াদি বর্ণিত হয়েছে।`,
+          `এটি কোনো আইনি নোটিশ, বিরোধ বা চুক্তিনামা নয়; বরং এটি একটি কলেজ/বিশ্ববিদ্যালয় সংক্রান্ত পড়াশোনার নথি।`
+        ],
+        isScam: false,
+        confidence: 0.99,
+        scamReason: "নথিটি সম্পূর্ণ বৈধ শিক্ষামূলক অ্যাসাইনমেন্ট। এতে কোনো আইনি বিরোধ, পুলিশী সতর্কতা বা আর্থিক প্রতারণার ঝুঁকি নেই।",
+        urgency: "কোনো আইনি বা আদালতের সময়সীমা নেই (No Legal Urgency)। আপনার কলেজের নির্ধারিত অ্যাসাইনমেন্ট জমার তারিখটি লক্ষ্য রাখুন।",
+        nextSteps: [
+          "অ্যাসাইনমেন্টের কোড ও ফলাফল নির্দেশনা অনুযায়ী সম্পন্ন করুন।",
+          "কোনো আইনজীবী বা আইনি পদক্ষেপের কোনো প্রয়োজন নেই।",
+          "নির্দিষ্ট সময়সীমার মধ্যে শিক্ষক বা পোর্টাল মাধ্যমে জমা দিন।"
+        ]
+      };
+    } else if (lang === 'hindi') {
+      return {
+        summary: [
+          `यह एक शैक्षणिक असाइनमेंट / कॉलेज का दस्तावेज़ है: "${titleLine}"।`,
+          `विषय एवं विवरण: ${subTitle}।`,
+          `छात्र / लेखक विवरण: ${authorLine}।`,
+          `दस्तावेज़ में ऑपरेटिंग सिस्टम और कंप्यूटर विज्ञान से संबंधित तकनीकी अवधारणाएं शामिल हैं।`,
+          `यह कोई कानूनी नोटिस, अदालती समन या अनुबंध नहीं है; बल्कि यह विशुद्ध रूप से पढ़ाई का दस्तावेज़ है।`
+        ],
+        isScam: false,
+        confidence: 0.99,
+        scamReason: "दस्तावेज़ पूरी तरह से वैध शैक्षणिक असाइनमेंट है। इसमें कोई वित्तीय धोखाधड़ी या कानूनी विवाद नहीं है।",
+        urgency: "कोई कानूनी समयसीमा नहीं है (No Legal Urgency)। केवल कॉलेज असाइनमेंट सबमिशन की तारीख का ध्यान रखें।",
+        nextSteps: [
+          "असाइनमेंट की आवश्यकताओं और प्रयोगों के परिणामों की जांच करें।",
+          "किसी वकील या कानूनी प्रक्रिया की कोई आवश्यकता नहीं है।",
+          "कॉलेज/संस्थान के पोर्टल पर समय पर जमा करें।"
+        ]
+      };
+    } else {
+      return {
+        summary: [
+          `हा एक शैक्षणिक असाइनमेंट किंवा कॉलेजचा अभ्यास दस्तऐवज आहे: "${titleLine}".`,
+          `विषय व तपशील: ${subTitle}.`,
+          `विद्यार्थी / लेखक तपशील: ${authorLine}.`,
+          `दस्तऐवजात ऑपरेटिंग सिस्टीम आणि संगणक शास्त्रातील तांत्रिक संकल्पनांची माहिती दिली आहे.`,
+          `ही कोणतीही कायदेशीर नोटीस किंवा न्यायालयीन समन्स नाही; तर हा एक अभ्यासाचा दस्तऐवज आहे.`
+        ],
+        isScam: false,
+        confidence: 0.99,
+        scamReason: "हा दस्तऐवज शैक्षणिक असाइनमेंट आहे. यात कोणताही कायदेशीर वाद किंवा फसवणूक नाही.",
+        urgency: "कोणतीही कायदेशीर निकड नाही (No Legal Urgency). केवळ कॉलेजच्या अंतिम मुदतीची काळजी घ्या.",
+        nextSteps: [
+          "असाइनमेंटमधील उत्तरांची आणि निर्देशांची खात्री करा.",
+          "कोणत्याही वकिलाच्या सल्ल्याची गरज नाही.",
+          "वेळेवर प्राध्यापकांकडे किंवा पोर्टलवर सबमिट करा."
+        ]
+      };
+    }
+  }
+
   // Fallback: Generic Real Legal Document Analysis based on extracted text lines
   const lines = rawText.split('\n').filter(l => l.trim().length > 3);
   const sampleLines = lines.slice(0, 5);
@@ -462,10 +543,27 @@ exports.handler = async (event) => {
     let extractedText = '';
     let analysisResult = null;
 
-    // 1. Call real AWS Textract to read all text from the uploaded image
-    if (imageBase64) {
+    // 1. Check if document is a PDF or an Image
+    const isPdf = (fileName || '').toLowerCase().endsWith('.pdf') || 
+                  (imageBase64 && Buffer.from(imageBase64.slice(0, 30), 'base64').toString('ascii').startsWith('%PDF'));
+
+    if (imageBase64 && isPdf) {
       try {
-        console.log('Invoking AWS Textract to read document text...');
+        console.log('Extracting text from PDF document...');
+        const pdfBytes = Buffer.from(imageBase64, 'base64');
+        const parser = new PDFParse(new Uint8Array(pdfBytes));
+        const parsedData = await parser.getText();
+        extractedText = parsedData.text || '';
+        console.log(`Successfully extracted ${extractedText.length} characters from PDF.`);
+      } catch (pdfErr) {
+        console.warn('PDF parsing encountered an issue:', pdfErr.message);
+      }
+    }
+
+    // 2. Call real AWS Textract for Image formats (JPEG, PNG)
+    if (!extractedText && imageBase64 && !isPdf) {
+      try {
+        console.log('Invoking AWS Textract to read document image text...');
         const imageBytes = Buffer.from(imageBase64, 'base64');
         const textractResponse = await textractClient.send(new DetectDocumentTextCommand({
           Document: { Bytes: imageBytes }
