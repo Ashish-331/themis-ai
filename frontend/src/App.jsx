@@ -25,19 +25,22 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
 
 const SAMPLE_DOCS = [
   {
+    name: 'Raksha Bandhan Legal Notice (Parody)',
+    fileName: 'raksha-bandhan-parody-notice.jpg',
+    description: 'Humorous notice under "Personal Emotional Damages Act, 2025" for bad chocolates',
+    url: '/sample_rakhi_notice.jpg'
+  },
+  {
     name: 'Standard Rent Agreement (11 Months)',
     fileName: 'rent-agreement-mumbai.jpg',
-    description: 'Residential lease agreement for Mumbai apartment with security deposit'
+    description: 'Residential lease agreement for Mumbai apartment with security deposit',
+    url: null
   },
   {
     name: 'Property Notice / Summons',
     fileName: 'legal-summons-notice.jpg',
-    description: 'Municipal corporation notice regarding property tax arrears'
-  },
-  {
-    name: 'Commercial Lease Deed',
-    fileName: 'commercial-lease-deed.jpg',
-    description: 'Shop rental deed with maintenance covenants'
+    description: 'Municipal corporation notice regarding property tax arrears',
+    url: null
   }
 ];
 
@@ -46,6 +49,7 @@ export default function App() {
   const [language, setLanguage] = useState('bengali'); // 'marathi' | 'hindi' | 'bengali'
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
+  const [imageBase64, setImageBase64] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [historyList, setHistoryList] = useState([]);
@@ -81,15 +85,39 @@ export default function App() {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      setFilePreview(URL.createObjectURL(file));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFilePreview(reader.result);
+        if (typeof reader.result === 'string') {
+          setImageBase64(reader.result.split(',')[1]);
+        }
+      };
+      reader.readAsDataURL(file);
       setAnalysisResult(null);
     }
   };
 
-  const handleSelectSample = (sample) => {
+  const handleSelectSample = async (sample) => {
     setSelectedFile({ name: sample.fileName });
-    setFilePreview('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=800');
+    setFilePreview(sample.url || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=800');
     setAnalysisResult(null);
+    if (sample.url) {
+      try {
+        const res = await fetch(sample.url);
+        const blob = await res.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            setImageBase64(reader.result.split(',')[1]);
+          }
+        };
+        reader.readAsDataURL(blob);
+      } catch (err) {
+        console.warn('Could not load sample blob:', err);
+      }
+    } else {
+      setImageBase64(null);
+    }
   };
 
   // Run document analysis
@@ -104,7 +132,8 @@ export default function App() {
       const payload = {
         fileName: selectedFile.name,
         language: language,
-        userId: 'demo-user'
+        userId: 'demo-user',
+        imageBase64: imageBase64
       };
 
       const res = await fetch(`${API_BASE_URL}/analyze`, {
