@@ -41,6 +41,12 @@ const SAMPLE_DOCS = [
     fileName: 'legal-summons-notice.jpg',
     description: 'Municipal corporation notice regarding property tax arrears',
     url: null
+  },
+  {
+    name: 'Section 138 Cheque Bounce Notice',
+    fileName: 'section-138-cheque-bounce.pdf',
+    description: 'Statutory 15-day demand notice under Negotiable Instruments Act, 1881',
+    url: null
   }
 ];
 
