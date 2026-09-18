@@ -274,7 +274,8 @@ exports.handler = async (event) => {
     let parseWarning = false;
 
     // 1. Try real Bedrock Vision if imageBase64 is provided and AWS credentials exist
-    if (imageBase64 && process.env.AWS_ACCESS_KEY_ID && !process.env.AWS_ACCESS_KEY_ID.startsWith('test')) {
+    const credKey = process.env.REAL_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+    if (imageBase64 && credKey && !credKey.startsWith('test')) {
       try {
         console.log('Calling Amazon Bedrock Claude 3.5 Sonnet Vision...');
         analysisResult = await callBedrockVision(imageBase64, normalizedLang);
