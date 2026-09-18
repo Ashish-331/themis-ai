@@ -1,0 +1,8 @@
+{
+  "httpMethod": "POST",
+  "path": "/analyze",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"fileName\": \"rent-agreement.jpg\", \"language\": \"bengali\", \"userId\": \"demo-user\"}"
+}

@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Themis - Legal Document Simplification & Scam Detection Backend
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: nodejs20.x
+    Environment:
+      Variables:
+        DOCUMENTS_TABLE: themis-documents
+        BUCKET_NAME: themis-documents-local
+        BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20241022-v2:0
+        AWS_REGION: ap-south-1
+        IS_LOCAL: 'true'
+        AWS_ENDPOINT_URL: 'http://host.docker.internal:4566'
+  Api:
+    Cors:
+      AllowMethods: "'POST,GET,OPTIONS'"
+      AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+
+Resources:
+  ThemisApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+
+  AnalyzeDocumentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers/analyze.handler
+      Description: Presigns S3 uploads, invokes Bedrock vision simplification, and stores results
+      Events:
+        AnalyzePost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ThemisApi
+            Path: /analyze
+            Method: POST
+
+  HistoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers/history.handler
+      Description: Retrieves user document analysis history chronologically from DynamoDB
+      Events:
+        HistoryGet:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ThemisApi
+            Path: /history
+            Method: GET
+
+Outputs:
+  ThemisApiUrl:
+    Description: API Gateway endpoint URL for Prod stage
+    Value: !Sub "https://${ThemisApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  AnalyzeFunctionArn:
+    Description: Analyze Document Lambda Function ARN
+    Value: !GetAtt AnalyzeDocumentFunction.Arn
+  HistoryFunctionArn:
+    Description: History Lambda Function ARN
+    Value: !GetAtt HistoryFunction.Arn

@@ -1,0 +1,10 @@
+{
+  "httpMethod": "GET",
+  "path": "/history",
+  "headers": {
+    "Accept": "application/json"
+  },
+  "queryStringParameters": {
+    "userId": "demo-user"
+  }
+}
