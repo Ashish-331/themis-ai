@@ -1,4 +1,4 @@
-# Nyaya Sahayak — Guideline (Install → Learn → Build Local → Push AWS)
+# Themis — Guideline (Install → Learn → Build Local → Push AWS)
 
 > **Order for this pass:** install every tool *one by one* with explanation, understand what each one is before touching it, build the entire thing locally end-to-end, then deploy to real AWS at the very end. No code in this doc yet — this is the map, not the build.
 >

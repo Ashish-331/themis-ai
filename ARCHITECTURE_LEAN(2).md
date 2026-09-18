@@ -1,8 +1,8 @@
-# Nyaya Sahayak — Lean Ship It Architecture v3 (Judge-Proof)
+# Themis — Lean Ship It Architecture v3 (Judge-Proof)
 
 > **First Commit - Bharat Builds Tour | Ship It Track**
-> **Problem:** Legal notices in English/legal Marathi cost Indians ₹2000 just to understand a rent agreement.  
-> **Solution:** Upload photo → Simple Marathi/Hindi in 5 points + AI scam heuristic + What to do next + Voice.
+> **Problem:** Legal notices in English/dense legal jargon cost Indians ₹2000 just to understand a rent agreement or summons.  
+> **Solution:** Upload photo → Simple Marathi, Hindi, or Bengali in 5 points + AI scam heuristic + What to do next + Voice.
 > **v3 fixes:** SK timestamp-prefix for correct sort + `share` locked to JWT `claims.sub` (closes privacy hole).
 
 ---
@@ -35,7 +35,7 @@
    |    |
    +--→ [ DynamoDB Single Table ]  ← PK/SK + GSI1, PAY_PER_REQUEST
    |
-[ S3 Bucket: nyaya-documents-* ]  ← photos via Presigned URL, not via Lambda
+[ S3 Bucket: themis-documents-* ]  ← photos via Presigned URL, not via Lambda
 ```
 
 **Auth Boundary (Honest Disclosure):**
@@ -54,7 +54,7 @@ Single-table DynamoDB covers `user → docs → shares` without JOINs, needs no 
 | **S3** | 5MB photos can't go in DynamoDB. Presigned URL lets React upload directly, bypassing Lambda 6MB limit. |
 | **DynamoDB PAY_PER_REQUEST (Single Table)** | Serverless, no VPC, no connection pooling. One Put/Query handles all access patterns. |
 | **Lambda + API Gateway (2 only)** | Scale to zero, pay per request. 2 functions (analyze, history) = less to break than 4. |
-| **Bedrock Claude 3.5 Sonnet Vision** | One call does OCR + Marathi simplification + scam heuristic. Textract + LLM would be 2 calls. |
+| **Bedrock Claude 3.5 Sonnet Vision** | One call does OCR + Marathi/Hindi/Bengali simplification + scam heuristic. Textract + LLM would be 2 calls. |
 | **Cognito User Pools** | Managed OTP, JWT, refresh. Required for legal-docs privacy. API Gateway authorizer validates. |
 | **Amplify Hosting** | 1-click React deploy, gives Ship It URL. |
 
@@ -64,7 +64,7 @@ Single-table DynamoDB covers `user → docs → shares` without JOINs, needs no 
 
 ## 4. DynamoDB Single Table Design
 
-**Table:** `nyaya-documents` | **Keys:** `PK (S) + SK (S)` | **GSI1:** `GSI1PK (S)` | **Billing:** PAY_PER_REQUEST
+**Table:** `themis-documents` | **Keys:** `PK (S) + SK (S)` | **GSI1:** `GSI1PK (S)` | **Billing:** PAY_PER_REQUEST
 
 | PK | SK | GSI1PK | Attributes | Purpose |
 |---|---|---|---|---|
