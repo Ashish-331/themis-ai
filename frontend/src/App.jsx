@@ -53,7 +53,7 @@ const SAMPLE_DOCS = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('analyze'); // 'analyze' | 'history' | 'architecture'
-  const [language, setLanguage] = useState('bengali'); // 'marathi' | 'hindi' | 'bengali'
+  const [language, setLanguage] = useState('hindi'); // Focused on Hindi
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
@@ -163,7 +163,7 @@ export default function App() {
     }
   };
 
-  // Text to Speech (Amazon Polly Neural Studio Voice with browser fallback)
+  // Text to Speech: 100% Studio-Quality Amazon Polly Neural Voice (Kajal - Hindi)
   const toggleSpeech = async () => {
     if (!analysisResult || !analysisResult.summary) return;
 
@@ -172,72 +172,60 @@ export default function App() {
       return;
     }
 
-    const prefix = language === 'hindi' 
-      ? 'कानूनी विश्लेषण सारांश: ' 
-      : (language === 'marathi' ? 'कायदेशीर विश्लेषण सारांश: ' : 'Legal Analysis Summary: ');
-
-    const textToSpeak = [
-      prefix,
-      ...analysisResult.summary,
-      language === 'hindi' ? `समय सीमा: ${analysisResult.urgency}` : (language === 'marathi' ? `मुदत: ${analysisResult.urgency}` : `Urgency: ${analysisResult.urgency}`),
-      language === 'hindi' ? `सलाह: ${analysisResult.scamReason}` : (language === 'marathi' ? `सल्ला: ${analysisResult.scamReason}` : `Advice: ${analysisResult.scamReason}`)
-    ].join('. ');
-
     setIsSynthesizingSpeech(true);
+    setErrorMessage(null);
+
+    // Build a crisp, human-like Hindi narration script (under 350 chars for instant <1s neural synthesis)
+    const firstPoint = analysisResult.summary[0] || '';
+    const secondPoint = analysisResult.summary[1] || '';
+    const verdict = analysisResult.isScam 
+      ? 'सावधान: यह एक संदिग्ध या अनाधिकारिक दस्तावेज़ है।' 
+      : 'यह एक वैध कानूनी दस्तावेज़ है।';
+    const urgency = analysisResult.urgency ? `समय सीमा: ${analysisResult.urgency}।` : '';
+
+    const hindiScript = `नमस्ते। थेमिस कानूनी सहायक। ${verdict} मुख्य बातें: ${firstPoint}। ${secondPoint}। ${urgency} अधिक जानकारी के लिए वकील से परामर्श लें।`;
 
     try {
-      // 1. Invoke Amazon Polly Neural Voice via backend
       const res = await fetch(`${API_BASE_URL}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'speak',
-          text: textToSpeak,
-          language: language,
-          fallbackEnglishText: `Themis Legal Summary. Document: ${analysisResult.fileName}. Status: ${analysisResult.isScam ? 'Potential Warning' : 'Legitimate Document'}. Urgency: ${analysisResult.urgency}. Key points: ${analysisResult.summary.join('. ')}`
+          text: hindiScript,
+          hindiSummary: hindiScript,
+          language: 'hindi'
         })
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.audioBase64) {
-          const audio = new Audio(`data:audio/mp3;base64,${data.audioBase64}`);
-          audio.onended = () => {
-            setIsSpeaking(false);
-            setCurrentAudio(null);
-          };
-          audio.onerror = () => {
-            setIsSpeaking(false);
-            setCurrentAudio(null);
-          };
-          setCurrentAudio(audio);
-          setVoiceEngine(`Amazon Polly (${data.voice || 'Neural'})`);
-          await audio.play();
-          setIsSpeaking(true);
-          setIsSynthesizingSpeech(false);
-          return;
-        }
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (data.audioBase64) {
+        const audio = new Audio(`data:audio/mp3;base64,${data.audioBase64}`);
+        audio.onended = () => {
+          setIsSpeaking(false);
+          setCurrentAudio(null);
+        };
+        audio.onerror = (e) => {
+          console.error('Audio playback error:', e);
+          setIsSpeaking(false);
+          setCurrentAudio(null);
+        };
+        setCurrentAudio(audio);
+        setVoiceEngine('Amazon Polly (Kajal Neural)');
+        await audio.play();
+        setIsSpeaking(true);
+      } else {
+        throw new Error(data.error || 'Amazon Polly did not return audio.');
       }
     } catch (pollyErr) {
-      console.warn('Amazon Polly API synthesis issue, falling back to local TTS:', pollyErr);
+      console.error('Amazon Polly Error:', pollyErr);
+      setErrorMessage(`Amazon Polly Hindi Voice Error: ${pollyErr.message}`);
     } finally {
       setIsSynthesizingSpeech(false);
-    }
-
-    // 2. Fallback to browser SpeechSynthesis if offline
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      if (language === 'bengali') utterance.lang = 'bn-IN';
-      else if (language === 'hindi') utterance.lang = 'hi-IN';
-      else if (language === 'marathi') utterance.lang = 'mr-IN';
-
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-
-      setVoiceEngine('Browser TTS (Local)');
-      window.speechSynthesis.speak(utterance);
-      setIsSpeaking(true);
     }
   };
 
@@ -246,9 +234,6 @@ export default function App() {
       currentAudio.pause();
       currentAudio.currentTime = 0;
       setCurrentAudio(null);
-    }
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
     }
     setIsSpeaking(false);
     setIsSynthesizingSpeech(false);
@@ -558,10 +543,10 @@ export default function App() {
                           )}
                           <span>
                             {isSynthesizingSpeech
-                              ? 'Synthesizing Polly...'
+                              ? 'Generating Polly Neural...'
                               : isSpeaking
                               ? 'Stop Voiceover'
-                              : 'Amazon Polly Audio'}
+                              : 'Hindi Neural Voiceover (Amazon Polly)'}
                           </span>
                         </button>
                       </div>

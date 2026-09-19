@@ -4,7 +4,7 @@ Description: Themis - Legal Document Simplification & Scam Detection Backend
 
 Globals:
   Function:
-    Timeout: 30
+    Timeout: 60
     MemorySize: 512
     Runtime: nodejs20.x
     Environment:

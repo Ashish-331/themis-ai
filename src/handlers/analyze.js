@@ -536,29 +536,31 @@ exports.handler = async (event) => {
       };
     }
 
-    // Route: Amazon Polly Neural Text-to-Speech
+    // Route: Amazon Polly Neural Hindi Voiceover
     if (body.action === 'speak') {
-      const { text, language = 'hindi', fallbackEnglishText } = body;
-      console.log(`[Amazon Polly] Synthesizing speech for language: ${language}...`);
+      const { text, hindiSummary } = body;
+      console.log('[Amazon Polly] Synthesizing human-like Hindi neural voiceover...');
 
-      let voiceId = 'Kajal';
-      let engine = 'neural';
-      let languageCode = 'hi-IN';
-      let speechText = (text || '').trim();
+      const voiceId = 'Kajal';
+      const engine = 'neural';
+      const languageCode = 'hi-IN';
 
-      // If text contains Bengali script characters, Polly hi-IN cannot pronounce Bengali alphabet.
-      // Use fallback English or Devanagari text with Kajal neural voice!
-      if (speechText.match(/[\u0980-\u09FF]/)) {
-        if (fallbackEnglishText) {
-          speechText = fallbackEnglishText;
-          languageCode = 'en-IN';
-        } else {
-          speechText = `Themis Legal Analysis: ${speechText.replace(/[\u0980-\u09FF]/g, '')}`;
-          languageCode = 'en-IN';
-        }
+      // Prioritize Hindi text
+      let speechText = (hindiSummary || text || '').trim();
+
+      // Clean up brackets, special characters, and multiple spaces
+      speechText = speechText
+        .replace(/[*#_~`]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      // Safe Unicode truncation to ~450 characters for crisp 15-20 second audio (under 1s generation)
+      const chars = Array.from(speechText);
+      if (chars.length > 450) {
+        speechText = chars.slice(0, 450).join('') + '।';
       }
 
-      speechText = speechText.slice(0, 2500);
+      console.log(`[Amazon Polly] Sending text (${speechText.length} chars) to Polly Kajal (neural)...`);
 
       try {
         const pollyCommand = new SynthesizeSpeechCommand({
@@ -572,12 +574,14 @@ exports.handler = async (event) => {
         const pollyResponse = await pollyClient.send(pollyCommand);
         const audioBytes = Buffer.from(await pollyResponse.AudioStream.transformToByteArray());
 
+        console.log(`[Amazon Polly] Successfully synthesized ${audioBytes.length} bytes of neural audio.`);
+
         return {
           statusCode: 200,
           headers: corsHeaders,
           body: JSON.stringify({
             audioBase64: audioBytes.toString('base64'),
-            voice: `${voiceId} (${engine})`,
+            voice: `${voiceId} (Neural Hindi)`,
             provider: 'Amazon Polly Neural'
           })
         };
