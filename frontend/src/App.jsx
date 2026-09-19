@@ -18,7 +18,8 @@ import {
   Server,
   Database,
   ExternalLink,
-  HelpCircle
+  HelpCircle,
+  Cpu
 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
@@ -466,6 +467,12 @@ export default function App() {
                           <span className="text-xs font-mono uppercase bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20 font-bold">
                             {analysisResult.language}
                           </span>
+                          {analysisResult.aiProvider && (
+                            <span className="text-xs font-mono bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/20 font-medium flex items-center space-x-1">
+                              <Cpu className="w-3 h-3 inline mr-1" />
+                              <span>{analysisResult.aiProvider}</span>
+                            </span>
+                          )}
                           <span className="text-xs text-slate-400">
                             {new Date(analysisResult.createdAt).toLocaleTimeString()}
                           </span>
@@ -614,9 +621,16 @@ export default function App() {
                   >
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase font-bold">
-                          {doc.language || 'Bengali'}
-                        </span>
+                        <div className="flex items-center space-x-1">
+                          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase font-bold">
+                            {doc.language || 'Bengali'}
+                          </span>
+                          {doc.aiProvider && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-medium truncate max-w-[130px]">
+                              {doc.aiProvider}
+                            </span>
+                          )}
+                        </div>
                         <span className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center space-x-1 ${
                           doc.isScam ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                         }`}>
