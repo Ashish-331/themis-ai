@@ -87,16 +87,30 @@ cp local/env.example.json local/env.json
 ```
 Populate your credentials in `local/env.json` (this file is gitignored for security).
 
-### 3. Start Local Emulation
+### 3. Start Local Emulation & Resources
 ```bash
-# Start LocalStack
+# 1. Start LocalStack
 docker run -d --name localstack_main -p 4566:4566 -e SERVICES=dynamodb,s3 localstack/localstack:3.8.1
 
-# Build and start SAM Local API
-sam build
-sam local start-api --env-vars local/env.json --port 3000
+# 2. Initialize LocalStack DynamoDB Table & S3 Bucket
+aws --endpoint-url=http://localhost:4566 dynamodb create-table \
+  --table-name themis-documents \
+  --attribute-definitions AttributeName=PK,AttributeType=S AttributeName=SK,AttributeType=S AttributeName=GSI1PK,AttributeType=S \
+  --key-schema AttributeName=PK,KeyType=HASH AttributeName=SK,KeyType=RANGE \
+  --global-secondary-indexes "IndexName=GSI1,KeySchema=[{AttributeName=GSI1PK,KeyType=HASH}],Projection={ProjectionType=ALL}" \
+  --billing-mode PAY_PER_REQUEST \
+  --region ap-south-1
 
-# Start Frontend Dev Server
+aws --endpoint-url=http://localhost:4566 s3 mb s3://themis-documents-local --region ap-south-1
+
+# 3. Run Backend Test Suite
+cd src && npm test && cd ..
+
+# 4. Build and start SAM Local API
+sam build
+sam local start-api --env-vars local/env.json --port 3000 --skip-pull-image
+
+# 5. Start Frontend Dev Server
 cd frontend && npm run dev
 ```
 Open **`http://localhost:5173`** in your browser.

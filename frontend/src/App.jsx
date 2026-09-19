@@ -202,15 +202,32 @@ export default function App() {
     setIsSynthesizingSpeech(true);
     setErrorMessage(null);
 
-    // Build a crisp, human-like Hindi narration script (under 350 chars for instant <1s neural synthesis)
+    // Build a crisp narration script matching the selected document language
+    const currentLang = (analysisResult.language || selectedLanguage || 'hindi').toLowerCase();
     const firstPoint = analysisResult.summary[0] || '';
     const secondPoint = analysisResult.summary[1] || '';
-    const verdict = analysisResult.isScam 
-      ? 'सावधान: यह एक संदिग्ध या अनाधिकारिक दस्तावेज़ है।' 
-      : 'यह एक वैध कानूनी दस्तावेज़ है।';
-    const urgency = analysisResult.urgency ? `समय सीमा: ${analysisResult.urgency}।` : '';
-
-    const hindiScript = `नमस्ते। थेमिस कानूनी सहायक। ${verdict} मुख्य बातें: ${firstPoint}। ${secondPoint}। ${urgency} अधिक जानकारी के लिए वकील से परामर्श लें।`;
+    
+    let narrationScript = '';
+    if (currentLang === 'marathi') {
+      const verdict = analysisResult.isScam 
+        ? 'सावधान: हा एक संशयास्पद किंवा अनधिकृत दस्तऐवज आहे.' 
+        : 'हा एक अधिकृत कायदेशीर दस्तऐवज आहे.';
+      const urgency = analysisResult.urgency ? `वेळ मर्यादा: ${analysisResult.urgency}.` : '';
+      narrationScript = `नमस्कार. थेमिस कायदेशीर सहाय्यक. ${verdict} मुख्य मुद्दे: ${firstPoint}. ${secondPoint}. ${urgency} अधिक माहितीसाठी वकिलांचा सल्ला घ्या.`;
+    } else if (currentLang === 'bengali') {
+      const verdict = analysisResult.isScam 
+        ? 'Warning: This document appears to be suspicious or fraudulent.' 
+        : 'This appears to be a legitimate legal document.';
+      const urgency = analysisResult.urgency ? `Urgency: ${analysisResult.urgency}.` : '';
+      narrationScript = `Hello, this is Themis Legal Assistant. ${verdict} Key point: ${firstPoint}. ${urgency} For full verification, please consult a verified legal advocate.`;
+    } else {
+      // Default Hindi
+      const verdict = analysisResult.isScam 
+        ? 'सावधान: यह एक संदिग्ध या अनाधिकारिक दस्तावेज़ है।' 
+        : 'यह एक वैध कानूनी दस्तावेज़ है।';
+      const urgency = analysisResult.urgency ? `समय सीमा: ${analysisResult.urgency}।` : '';
+      narrationScript = `नमस्ते। थेमिस कानूनी सहायक। ${verdict} मुख्य बातें: ${firstPoint}। ${secondPoint}। ${urgency} अधिक जानकारी के लिए वकील से परामर्श लें।`;
+    }
 
     try {
       const res = await fetch(`${API_BASE_URL}/analyze`, {
@@ -218,9 +235,8 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'speak',
-          text: hindiScript,
-          hindiSummary: hindiScript,
-          language: 'hindi'
+          text: narrationScript,
+          language: currentLang
         })
       });
 
@@ -245,7 +261,7 @@ export default function App() {
           setIsSpeaking(false);
         };
         setCurrentAudio(audio);
-        setVoiceEngine('Amazon Polly (Kajal Neural)');
+        setVoiceEngine(data.voice || 'Amazon Polly (Kajal Neural)');
         await audio.play();
         setIsSpeaking(true);
       } else {
@@ -253,7 +269,7 @@ export default function App() {
       }
     } catch (pollyErr) {
       console.error('Amazon Polly Error:', pollyErr);
-      setErrorMessage(`Amazon Polly Hindi Voice Error: ${pollyErr.message}`);
+      setErrorMessage(`Amazon Polly Voice Error: ${pollyErr.message}`);
     } finally {
       setIsSynthesizingSpeech(false);
     }

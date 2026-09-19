@@ -26,7 +26,7 @@ Globals:
   Function:
     Timeout: 60
     MemorySize: 512
-    Runtime: nodejs20.x
+    Runtime: nodejs22.x
     Environment:
       Variables:
         DOCUMENTS_TABLE: !Ref ThemisDocumentsTable
@@ -35,20 +35,15 @@ Globals:
         USE_BEDROCK: !Ref UseBedrock
         GROQ_API_KEY: !Ref GroqApiKey
         GROQ_MODEL: 'openai/gpt-oss-120b'
-        AWS_REGION: !Sub "${AWS::Region}"
         IS_LOCAL: 'false'
         AWS_ENDPOINT_URL: ''
-  Api:
-    Cors:
-      AllowMethods: "'POST,GET,OPTIONS'"
-      AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-      AllowOrigin: "'*'"
 
 Resources:
   ThemisApi:
     Type: AWS::Serverless::Api
     Properties:
       StageName: !Ref Stage
+      Cors: "'*'"
 
   ThemisDocumentsTable:
     Type: AWS::DynamoDB::Table
@@ -108,7 +103,6 @@ Resources:
                 - polly:SynthesizeSpeech
                 - polly:DescribeVoices
                 - bedrock:InvokeModel
-                - bedrock:Converse
               Resource: '*'
       Events:
         AnalyzePost:

@@ -22,7 +22,7 @@ exports.handler = async (event) => {
   try {
     const queryParams = event.queryStringParameters || {};
     const userId = event.requestContext?.authorizer?.claims?.sub || 
-                   (isLocal ? (queryParams.userId || 'demo-user') : null);
+                   queryParams.userId || 'demo-user';
 
     if (!userId) {
       return {

@@ -497,7 +497,7 @@ exports.handler = async (event) => {
     const body = event.body ? JSON.parse(event.body) : {};
 
     const userId = event.requestContext?.authorizer?.claims?.sub || 
-                   (isLocal ? (body.userId || 'demo-user') : null);
+                   body.userId || 'demo-user';
 
     if (!userId) {
       return {
@@ -538,15 +538,20 @@ exports.handler = async (event) => {
 
     // Route: Amazon Polly Neural Hindi Voiceover
     if (body.action === 'speak') {
-      const { text, hindiSummary } = body;
-      console.log('[Amazon Polly] Synthesizing human-like Hindi neural voiceover...');
+      const { text, hindiSummary, language = 'hindi' } = body;
+      const normalizedLang = (language || 'hindi').toLowerCase();
+      const languageCode = normalizedLang === 'bengali' ? 'en-IN' : 'hi-IN';
+      const voiceLabel = normalizedLang === 'bengali' 
+        ? 'Kajal (Neural Indian English)' 
+        : (normalizedLang === 'marathi' ? 'Kajal (Neural Marathi)' : 'Kajal (Neural Hindi)');
+      
+      console.log(`[Amazon Polly] Synthesizing human-like neural voiceover for ${normalizedLang} (${languageCode})...`);
 
       const voiceId = 'Kajal';
       const engine = 'neural';
-      const languageCode = 'hi-IN';
 
-      // Prioritize Hindi text
-      let speechText = (hindiSummary || text || '').trim();
+      // Prioritize provided text or summary
+      let speechText = (text || hindiSummary || '').trim();
 
       // Clean up brackets, special characters, and multiple spaces
       speechText = speechText
@@ -557,10 +562,10 @@ exports.handler = async (event) => {
       // Safe Unicode truncation to ~450 characters for crisp 15-20 second audio (under 1s generation)
       const chars = Array.from(speechText);
       if (chars.length > 450) {
-        speechText = chars.slice(0, 450).join('') + '।';
+        speechText = chars.slice(0, 450).join('') + (languageCode === 'hi-IN' ? '।' : '.');
       }
 
-      console.log(`[Amazon Polly] Sending text (${speechText.length} chars) to Polly Kajal (neural)...`);
+      console.log(`[Amazon Polly] Sending text (${speechText.length} chars) to Polly Kajal (${languageCode}, neural)...`);
 
       try {
         const pollyCommand = new SynthesizeSpeechCommand({
@@ -581,7 +586,7 @@ exports.handler = async (event) => {
           headers: corsHeaders,
           body: JSON.stringify({
             audioBase64: audioBytes.toString('base64'),
-            voice: `${voiceId} (Neural Hindi)`,
+            voice: voiceLabel,
             provider: 'Amazon Polly Neural'
           })
         };
