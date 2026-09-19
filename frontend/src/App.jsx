@@ -64,6 +64,7 @@ export default function App() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSynthesizingSpeech, setIsSynthesizingSpeech] = useState(false);
   const [currentAudio, setCurrentAudio] = useState(null);
+  const [audioCache, setAudioCache] = useState({});
   const [voiceEngine, setVoiceEngine] = useState('Amazon Polly (Neural)');
   const [errorMessage, setErrorMessage] = useState(null);
 
@@ -163,15 +164,44 @@ export default function App() {
     }
   };
 
-  // Text to Speech: 100% Studio-Quality Amazon Polly Neural Voice (Kajal - Hindi)
+  // Helper to get consistent document cache key
+  const getDocKey = (result) => result ? (result.SK || result.fileName || 'current-doc') : 'current-doc';
+
+  // Text to Speech: 100% Studio-Quality Amazon Polly Neural Voice with In-Memory Caching (0 re-fetch)
   const toggleSpeech = async () => {
     if (!analysisResult || !analysisResult.summary) return;
+    const docKey = getDocKey(analysisResult);
 
+    // If currently speaking, pause it
     if (isSpeaking) {
-      stopSpeech();
+      if (currentAudio) {
+        currentAudio.pause();
+      }
+      setIsSpeaking(false);
       return;
     }
 
+    // 1. REPLAY CACHED AUDIO: If audio was already generated for this document, replay immediately with 0 fetch
+    const cachedBase64 = audioCache[docKey];
+    if (cachedBase64) {
+      if (currentAudio && currentAudio.dataset?.docKey === docKey) {
+        currentAudio.currentTime = 0;
+        await currentAudio.play();
+        setIsSpeaking(true);
+        return;
+      }
+
+      const audio = new Audio(`data:audio/mp3;base64,${cachedBase64}`);
+      audio.dataset = { docKey };
+      audio.onended = () => setIsSpeaking(false);
+      audio.onerror = () => setIsSpeaking(false);
+      setCurrentAudio(audio);
+      await audio.play();
+      setIsSpeaking(true);
+      return;
+    }
+
+    // 2. FIRST-TIME GENERATION: Fetch from Amazon Polly once
     setIsSynthesizingSpeech(true);
     setErrorMessage(null);
 
@@ -204,15 +234,18 @@ export default function App() {
 
       const data = await res.json();
       if (data.audioBase64) {
+        // Cache the audio for this document so subsequent clicks replay with 0 network calls!
+        setAudioCache(prev => ({
+          ...prev,
+          [docKey]: data.audioBase64
+        }));
+
         const audio = new Audio(`data:audio/mp3;base64,${data.audioBase64}`);
-        audio.onended = () => {
-          setIsSpeaking(false);
-          setCurrentAudio(null);
-        };
+        audio.dataset = { docKey };
+        audio.onended = () => setIsSpeaking(false);
         audio.onerror = (e) => {
           console.error('Audio playback error:', e);
           setIsSpeaking(false);
-          setCurrentAudio(null);
         };
         setCurrentAudio(audio);
         setVoiceEngine('Amazon Polly (Kajal Neural)');
@@ -233,7 +266,6 @@ export default function App() {
     if (currentAudio) {
       currentAudio.pause();
       currentAudio.currentTime = 0;
-      setCurrentAudio(null);
     }
     setIsSpeaking(false);
     setIsSynthesizingSpeech(false);
@@ -537,7 +569,9 @@ export default function App() {
                           {isSynthesizingSpeech ? (
                             <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
                           ) : isSpeaking ? (
-                            <VolumeX className="w-4 h-4" />
+                            <VolumeX className="w-4 h-4 text-slate-950" />
+                          ) : audioCache[getDocKey(analysisResult)] ? (
+                            <Volume2 className="w-4 h-4 text-emerald-400" />
                           ) : (
                             <Volume2 className="w-4 h-4 text-amber-400" />
                           )}
@@ -545,9 +579,16 @@ export default function App() {
                             {isSynthesizingSpeech
                               ? 'Generating Polly Neural...'
                               : isSpeaking
-                              ? 'Stop Voiceover'
+                              ? 'Pause Voiceover'
+                              : audioCache[getDocKey(analysisResult)]
+                              ? 'Replay Hindi Voice (Instant)'
                               : 'Hindi Neural Voiceover (Amazon Polly)'}
                           </span>
+                          {audioCache[getDocKey(analysisResult)] && !isSpeaking && !isSynthesizingSpeech && (
+                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-mono px-1.5 py-0.5 rounded ml-1 border border-emerald-500/30">
+                              Cached
+                            </span>
+                          )}
                         </button>
                       </div>
                     </div>
