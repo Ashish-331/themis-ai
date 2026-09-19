@@ -12,6 +12,12 @@ Globals:
         DOCUMENTS_TABLE: themis-documents
         BUCKET_NAME: themis-documents-local
         BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20241022-v2:0
+        USE_BEDROCK: 'false'
+        GROQ_API_KEY: ''
+        GROQ_MODEL: 'qwen/qwen3.8-27b'
+        GROK_API_KEY: ''
+        REAL_AWS_ACCESS_KEY_ID: ''
+        REAL_AWS_SECRET_ACCESS_KEY: ''
         AWS_REGION: ap-south-1
         IS_LOCAL: 'true'
         AWS_ENDPOINT_URL: 'http://host.docker.internal:4566'

@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 const { docClient, s3Client, textractClient, isLocal } = require('../lib/aws');
 
 const { PDFParse } = require('pdf-parse');
+const { generateLegalAnalysis } = require('../lib/ai');
 
 const corsHeaders = {
   'Content-Type': 'application/json',
@@ -580,13 +581,9 @@ exports.handler = async (event) => {
       }
     }
 
-    // 2. Perform Dynamic Legal Analysis on the extracted text
-    if (extractedText) {
-      analysisResult = analyzeExtractedLegalText(extractedText, normalizedLang);
-    } else {
-      // Fallback if no image bytes provided
-      analysisResult = analyzeExtractedLegalText(fileName, normalizedLang);
-    }
+    // 3. Perform Dynamic Generative AI Analysis (Bedrock -> Groq/Grok -> Rule-based fallback)
+    const textToAnalyze = extractedText || fileName;
+    analysisResult = await generateLegalAnalysis(textToAnalyze, normalizedLang, analyzeExtractedLegalText);
 
     const now = new Date().toISOString();
     const docId = body.docId || uuidv4();
@@ -612,6 +609,7 @@ exports.handler = async (event) => {
       sharedWith: [],
       createdAt: now,
       extractedTextLength: extractedText.length,
+      aiProvider: analysisResult.provider || 'Themis AI',
       parseWarning: false
     };
 
