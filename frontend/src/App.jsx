@@ -184,7 +184,7 @@ export default function App() {
     // 1. REPLAY CACHED AUDIO: If audio was already generated for this document, replay immediately with 0 fetch
     const cachedBase64 = audioCache[docKey];
     if (cachedBase64) {
-      if (currentAudio && currentAudio.dataset?.docKey === docKey) {
+      if (currentAudio && currentAudio.docKey === docKey) {
         currentAudio.currentTime = 0;
         await currentAudio.play();
         setIsSpeaking(true);
@@ -192,7 +192,7 @@ export default function App() {
       }
 
       const audio = new Audio(`data:audio/mp3;base64,${cachedBase64}`);
-      audio.dataset = { docKey };
+      audio.docKey = docKey;
       audio.onended = () => setIsSpeaking(false);
       audio.onerror = () => setIsSpeaking(false);
       setCurrentAudio(audio);
@@ -241,7 +241,7 @@ export default function App() {
         }));
 
         const audio = new Audio(`data:audio/mp3;base64,${data.audioBase64}`);
-        audio.dataset = { docKey };
+        audio.docKey = docKey;
         audio.onended = () => setIsSpeaking(false);
         audio.onerror = (e) => {
           console.error('Audio playback error:', e);
