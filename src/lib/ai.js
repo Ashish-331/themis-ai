@@ -114,44 +114,57 @@ async function callGroqOrGrok(extractedText, language) {
     return null;
   }
 
-  console.log(`[Themis AI] Invoking ${providerName}...`);
   const prompt = buildPrompt(extractedText, language);
+  const candidateModels = [];
+  if (process.env.GROQ_MODEL) candidateModels.push(process.env.GROQ_MODEL);
+  if (!candidateModels.includes('openai/gpt-oss-120b')) candidateModels.push('openai/gpt-oss-120b');
+  if (!candidateModels.includes('qwen/qwen3.8-27b')) candidateModels.push('qwen/qwen3.8-27b');
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are Themis, a legal AI assistant for Indian citizens. You output only valid JSON without markdown fences.'
+  for (const model of candidateModels) {
+    const providerName = `Groq (${model})`;
+    try {
+      console.log(`[Themis AI] Invoking ${providerName}...`);
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
         },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.2,
-      response_format: { type: 'json_object' }
-    })
-  });
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are Themis, a legal AI assistant for Indian citizens. You output only valid JSON without markdown fences.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.2,
+          response_format: { type: 'json_object' }
+        })
+      });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`${providerName} error (${res.status}): ${errText}`);
+      if (!res.ok) {
+        const errText = await res.text();
+        console.warn(`[Themis AI] ${providerName} returned ${res.status}: ${errText}. Attempting fallback candidate model...`);
+        continue;
+      }
+
+      const data = await res.json();
+      const rawText = data.choices?.[0]?.message?.content || '';
+      const parsed = parseRobustJson(rawText);
+      if (parsed && parsed.summary) {
+        return { ...parsed, provider: providerName };
+      }
+    } catch (err) {
+      console.warn(`[Themis AI] Model ${model} error:`, err.message);
+    }
   }
 
-  const data = await res.json();
-  const rawText = data.choices?.[0]?.message?.content || '';
-  const parsed = parseRobustJson(rawText);
-  if (!parsed || !parsed.summary) {
-    throw new Error(`${providerName} returned unparseable JSON`);
-  }
-  return { ...parsed, provider: providerName };
+  throw new Error('All Groq candidate models failed or exceeded limits');
 }
 
 /**
