@@ -2,8 +2,9 @@ const { PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { PutObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { DetectDocumentTextCommand } = require('@aws-sdk/client-textract');
+const { SynthesizeSpeechCommand } = require('@aws-sdk/client-polly');
 const { v4: uuidv4 } = require('uuid');
-const { docClient, s3Client, textractClient, isLocal } = require('../lib/aws');
+const { docClient, s3Client, textractClient, pollyClient, isLocal } = require('../lib/aws');
 
 const { PDFParse } = require('pdf-parse');
 const { generateLegalAnalysis } = require('../lib/ai');
@@ -533,6 +534,61 @@ exports.handler = async (event) => {
           fileName
         })
       };
+    }
+
+    // Route: Amazon Polly Neural Text-to-Speech
+    if (body.action === 'speak') {
+      const { text, language = 'hindi', fallbackEnglishText } = body;
+      console.log(`[Amazon Polly] Synthesizing speech for language: ${language}...`);
+
+      let voiceId = 'Kajal';
+      let engine = 'neural';
+      let languageCode = 'hi-IN';
+      let speechText = (text || '').trim();
+
+      // If text contains Bengali script characters, Polly hi-IN cannot pronounce Bengali alphabet.
+      // Use fallback English or Devanagari text with Kajal neural voice!
+      if (speechText.match(/[\u0980-\u09FF]/)) {
+        if (fallbackEnglishText) {
+          speechText = fallbackEnglishText;
+          languageCode = 'en-IN';
+        } else {
+          speechText = `Themis Legal Analysis: ${speechText.replace(/[\u0980-\u09FF]/g, '')}`;
+          languageCode = 'en-IN';
+        }
+      }
+
+      speechText = speechText.slice(0, 2500);
+
+      try {
+        const pollyCommand = new SynthesizeSpeechCommand({
+          OutputFormat: 'mp3',
+          Text: speechText,
+          VoiceId: voiceId,
+          Engine: engine,
+          LanguageCode: languageCode
+        });
+
+        const pollyResponse = await pollyClient.send(pollyCommand);
+        const audioBytes = Buffer.from(await pollyResponse.AudioStream.transformToByteArray());
+
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            audioBase64: audioBytes.toString('base64'),
+            voice: `${voiceId} (${engine})`,
+            provider: 'Amazon Polly Neural'
+          })
+        };
+      } catch (pollyErr) {
+        console.error('[Amazon Polly] Synthesis error:', pollyErr);
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: `Polly synthesis failed: ${pollyErr.message}` })
+        };
+      }
     }
 
     // Route 2: Analyze Document

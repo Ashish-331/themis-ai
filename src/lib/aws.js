@@ -37,6 +37,7 @@ const docClient = DynamoDBDocumentClient.from(rawDdb, {
 const s3Client = new S3Client(s3ClientConfig);
 
 const { TextractClient } = require('@aws-sdk/client-textract');
+const { PollyClient } = require('@aws-sdk/client-polly');
 
 // Bedrock Runtime client (uses real AWS credentials and us-east-1 where Claude 3.5 Sonnet is enabled)
 const bedrockRegion = process.env.BEDROCK_REGION || 'us-east-1';
@@ -50,6 +51,11 @@ const textractConfig = {
   endpoint: 'https://textract.ap-south-1.amazonaws.com'
 };
 
+const pollyConfig = {
+  region: 'ap-south-1',
+  endpoint: 'https://polly.ap-south-1.amazonaws.com'
+};
+
 if (realKey && realSecret && !realKey.startsWith('test')) {
   bedrockConfig.credentials = {
     accessKeyId: realKey,
@@ -59,16 +65,22 @@ if (realKey && realSecret && !realKey.startsWith('test')) {
     accessKeyId: realKey,
     secretAccessKey: realSecret
   };
+  pollyConfig.credentials = {
+    accessKeyId: realKey,
+    secretAccessKey: realSecret
+  };
 }
 
 const bedrockClient = new BedrockRuntimeClient(bedrockConfig);
 const textractClient = new TextractClient(textractConfig);
+const pollyClient = new PollyClient(pollyConfig);
 
 module.exports = {
   docClient,
   s3Client,
   bedrockClient,
   textractClient,
+  pollyClient,
   isLocal,
   region
 };

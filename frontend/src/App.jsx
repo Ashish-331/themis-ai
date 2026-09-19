@@ -62,6 +62,9 @@ export default function App() {
   const [historyList, setHistoryList] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isSynthesizingSpeech, setIsSynthesizingSpeech] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState(null);
+  const [voiceEngine, setVoiceEngine] = useState('Amazon Polly (Neural)');
   const [errorMessage, setErrorMessage] = useState(null);
 
   // Fetch document history
@@ -160,8 +163,8 @@ export default function App() {
     }
   };
 
-  // Text to Speech
-  const toggleSpeech = () => {
+  // Text to Speech (Amazon Polly Neural Studio Voice with browser fallback)
+  const toggleSpeech = async () => {
     if (!analysisResult || !analysisResult.summary) return;
 
     if (isSpeaking) {
@@ -169,14 +172,61 @@ export default function App() {
       return;
     }
 
+    const prefix = language === 'hindi' 
+      ? 'कानूनी विश्लेषण सारांश: ' 
+      : (language === 'marathi' ? 'कायदेशीर विश्लेषण सारांश: ' : 'Legal Analysis Summary: ');
+
+    const textToSpeak = [
+      prefix,
+      ...analysisResult.summary,
+      language === 'hindi' ? `समय सीमा: ${analysisResult.urgency}` : (language === 'marathi' ? `मुदत: ${analysisResult.urgency}` : `Urgency: ${analysisResult.urgency}`),
+      language === 'hindi' ? `सलाह: ${analysisResult.scamReason}` : (language === 'marathi' ? `सल्ला: ${analysisResult.scamReason}` : `Advice: ${analysisResult.scamReason}`)
+    ].join('. ');
+
+    setIsSynthesizingSpeech(true);
+
+    try {
+      // 1. Invoke Amazon Polly Neural Voice via backend
+      const res = await fetch(`${API_BASE_URL}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'speak',
+          text: textToSpeak,
+          language: language,
+          fallbackEnglishText: `Themis Legal Summary. Document: ${analysisResult.fileName}. Status: ${analysisResult.isScam ? 'Potential Warning' : 'Legitimate Document'}. Urgency: ${analysisResult.urgency}. Key points: ${analysisResult.summary.join('. ')}`
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.audioBase64) {
+          const audio = new Audio(`data:audio/mp3;base64,${data.audioBase64}`);
+          audio.onended = () => {
+            setIsSpeaking(false);
+            setCurrentAudio(null);
+          };
+          audio.onerror = () => {
+            setIsSpeaking(false);
+            setCurrentAudio(null);
+          };
+          setCurrentAudio(audio);
+          setVoiceEngine(`Amazon Polly (${data.voice || 'Neural'})`);
+          await audio.play();
+          setIsSpeaking(true);
+          setIsSynthesizingSpeech(false);
+          return;
+        }
+      }
+    } catch (pollyErr) {
+      console.warn('Amazon Polly API synthesis issue, falling back to local TTS:', pollyErr);
+    } finally {
+      setIsSynthesizingSpeech(false);
+    }
+
+    // 2. Fallback to browser SpeechSynthesis if offline
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const textToSpeak = [
-        ...analysisResult.summary,
-        `জরুরী সতর্কতা: ${analysisResult.urgency}`,
-        `পরামর্শ: ${analysisResult.scamReason}`
-      ].join('. ');
-
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
       if (language === 'bengali') utterance.lang = 'bn-IN';
       else if (language === 'hindi') utterance.lang = 'hi-IN';
@@ -185,18 +235,23 @@ export default function App() {
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = () => setIsSpeaking(false);
 
+      setVoiceEngine('Browser TTS (Local)');
       window.speechSynthesis.speak(utterance);
       setIsSpeaking(true);
-    } else {
-      alert('Speech synthesis is not supported on this browser.');
     }
   };
 
   const stopSpeech = () => {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      setCurrentAudio(null);
+    }
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
     setIsSpeaking(false);
+    setIsSynthesizingSpeech(false);
   };
 
   return (
@@ -482,17 +537,34 @@ export default function App() {
                         </h3>
                       </div>
 
-                      <button
-                        onClick={toggleSpeech}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center space-x-2 border transition-all ${
-                          isSpeaking
-                            ? 'bg-amber-500 text-slate-950 border-amber-400 animate-pulse'
-                            : 'bg-slate-800 text-slate-200 border-slate-700 hover:border-amber-400 hover:text-white'
-                        }`}
-                      >
-                        {isSpeaking ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                        <span>{isSpeaking ? 'Stop Audio' : 'Listen Voiceover'}</span>
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={toggleSpeech}
+                          disabled={isSynthesizingSpeech}
+                          className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center space-x-2 border transition-all ${
+                            isSpeaking
+                              ? 'bg-amber-500 text-slate-950 border-amber-400 animate-pulse'
+                              : isSynthesizingSpeech
+                              ? 'bg-slate-800 text-amber-400 border-amber-500/40 animate-pulse'
+                              : 'bg-slate-800 text-slate-200 border-slate-700 hover:border-amber-400 hover:text-white'
+                          }`}
+                        >
+                          {isSynthesizingSpeech ? (
+                            <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+                          ) : isSpeaking ? (
+                            <VolumeX className="w-4 h-4" />
+                          ) : (
+                            <Volume2 className="w-4 h-4 text-amber-400" />
+                          )}
+                          <span>
+                            {isSynthesizingSpeech
+                              ? 'Synthesizing Polly...'
+                              : isSpeaking
+                              ? 'Stop Voiceover'
+                              : 'Amazon Polly Audio'}
+                          </span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Scam Risk Assessment Card */}
