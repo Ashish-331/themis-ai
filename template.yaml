@@ -1,6 +1,26 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Themis - Legal Document Simplification & Scam Detection Backend
+Description: Themis (न्याय सहायक) - AI Legal Document Simplification & Scam Detection Backend
+
+Parameters:
+  Stage:
+    Type: String
+    Default: Prod
+    Description: Deployment stage environment name
+  GroqApiKey:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: Optional Groq API Key for high-speed generative Indian legal simplification
+  UseBedrock:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Enable Amazon Bedrock Converse API as primary generative AI engine
+  BedrockModelId:
+    Type: String
+    Default: anthropic.claude-3-5-sonnet-20241022-v2:0
+    Description: Bedrock Model ID for legal document analysis
 
 Globals:
   Function:
@@ -9,18 +29,15 @@ Globals:
     Runtime: nodejs20.x
     Environment:
       Variables:
-        DOCUMENTS_TABLE: themis-documents
-        BUCKET_NAME: themis-documents-local
-        BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20241022-v2:0
-        USE_BEDROCK: 'false'
-        GROQ_API_KEY: ''
-        GROQ_MODEL: 'qwen/qwen3.8-27b'
-        GROK_API_KEY: ''
-        REAL_AWS_ACCESS_KEY_ID: ''
-        REAL_AWS_SECRET_ACCESS_KEY: ''
-        AWS_REGION: ap-south-1
-        IS_LOCAL: 'true'
-        AWS_ENDPOINT_URL: 'http://host.docker.internal:4566'
+        DOCUMENTS_TABLE: !Ref ThemisDocumentsTable
+        BUCKET_NAME: !Ref ThemisUploadsBucket
+        BEDROCK_MODEL_ID: !Ref BedrockModelId
+        USE_BEDROCK: !Ref UseBedrock
+        GROQ_API_KEY: !Ref GroqApiKey
+        GROQ_MODEL: 'openai/gpt-oss-120b'
+        AWS_REGION: !Sub "${AWS::Region}"
+        IS_LOCAL: 'false'
+        AWS_ENDPOINT_URL: ''
   Api:
     Cors:
       AllowMethods: "'POST,GET,OPTIONS'"
@@ -31,14 +48,68 @@ Resources:
   ThemisApi:
     Type: AWS::Serverless::Api
     Properties:
-      StageName: Prod
+      StageName: !Ref Stage
+
+  ThemisDocumentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: themis-documents
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  ThemisUploadsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "themis-documents-${AWS::AccountId}-${AWS::Region}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - HEAD
+            AllowedOrigins:
+              - '*'
+            MaxAge: 3000
 
   AnalyzeDocumentFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: handlers/analyze.handler
-      Description: Presigns S3 uploads, invokes Bedrock vision simplification, and stores results
+      Description: Extracts document text via Textract, simplifies via AI (Bedrock/Groq), synthesizes audio via Polly, and stores in DynamoDB
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ThemisDocumentsTable
+        - S3CrudPolicy:
+            BucketName: !Ref ThemisUploadsBucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - textract:DetectDocumentText
+                - polly:SynthesizeSpeech
+                - polly:DescribeVoices
+                - bedrock:InvokeModel
+                - bedrock:Converse
+              Resource: '*'
       Events:
         AnalyzePost:
           Type: Api
@@ -52,7 +123,10 @@ Resources:
     Properties:
       CodeUri: src/
       Handler: handlers/history.handler
-      Description: Retrieves user document analysis history chronologically from DynamoDB
+      Description: Retrieves chronological document scans from DynamoDB
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ThemisDocumentsTable
       Events:
         HistoryGet:
           Type: Api
@@ -64,7 +138,13 @@ Resources:
 Outputs:
   ThemisApiUrl:
     Description: API Gateway endpoint URL for Prod stage
-    Value: !Sub "https://${ThemisApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+    Value: !Sub "https://${ThemisApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/"
+  DocumentsTable:
+    Description: DynamoDB Table Name for Themis documents
+    Value: !Ref ThemisDocumentsTable
+  DocumentsBucket:
+    Description: S3 Bucket Name for document uploads
+    Value: !Ref ThemisUploadsBucket
   AnalyzeFunctionArn:
     Description: Analyze Document Lambda Function ARN
     Value: !GetAtt AnalyzeDocumentFunction.Arn

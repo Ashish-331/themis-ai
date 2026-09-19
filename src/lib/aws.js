@@ -46,15 +46,14 @@ const bedrockConfig = { region: bedrockRegion };
 const realKey = process.env.REAL_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
 const realSecret = process.env.REAL_AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
 
-const textractConfig = { 
-  region: 'ap-south-1',
-  endpoint: 'https://textract.ap-south-1.amazonaws.com'
-};
+const textractConfig = { region: 'ap-south-1' };
+const pollyConfig = { region: 'ap-south-1' };
 
-const pollyConfig = {
-  region: 'ap-south-1',
-  endpoint: 'https://polly.ap-south-1.amazonaws.com'
-};
+// When running locally with LocalStack, explicitly direct Textract and Polly to real AWS endpoints
+if (isLocal) {
+  textractConfig.endpoint = 'https://textract.ap-south-1.amazonaws.com';
+  pollyConfig.endpoint = 'https://polly.ap-south-1.amazonaws.com';
+}
 
 if (realKey && realSecret && !realKey.startsWith('test')) {
   bedrockConfig.credentials = {

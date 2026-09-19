@@ -13,12 +13,9 @@ import {
   ArrowRight, 
   Sparkles, 
   RefreshCw, 
-  Languages, 
-  Info,
+  Languages,
   Server,
   Database,
-  ExternalLink,
-  HelpCircle,
   Cpu
 } from 'lucide-react';
 
@@ -426,12 +423,16 @@ export default function App() {
                   {selectedFile && (
                     <div className="mt-4 p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-between">
                       <div className="flex items-center space-x-3 overflow-hidden">
-                        <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 flex-shrink-0 font-bold text-xs">
-                          DOC
-                        </div>
+                        {filePreview && typeof filePreview === 'string' && (filePreview.startsWith('data:image') || filePreview.startsWith('http')) ? (
+                          <img src={filePreview} alt="Preview" className="w-10 h-10 object-cover rounded-lg border border-slate-700 flex-shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 flex-shrink-0 font-bold text-xs">
+                            {selectedFile.name.endsWith('.pdf') ? 'PDF' : 'DOC'}
+                          </div>
+                        )}
                         <div className="truncate">
                           <p className="text-sm font-medium text-white truncate">{selectedFile.name}</p>
-                          <p className="text-xs text-slate-400">Ready for Vision analysis</p>
+                          <p className="text-xs text-slate-400">Ready for Textract & legal analysis</p>
                         </div>
                       </div>
                       <button
@@ -590,6 +591,11 @@ export default function App() {
                             </span>
                           )}
                         </button>
+                        {voiceEngine && (
+                          <span className="hidden md:inline-flex text-[10px] font-mono bg-purple-500/10 text-purple-300 px-2 py-1 rounded-lg border border-purple-500/20">
+                            {voiceEngine}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -790,19 +796,22 @@ export default function App() {
               <div className="p-6 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 leading-relaxed overflow-x-auto">
                 <pre>{`[ React Frontend on AWS Amplify ]
         |
-        |  Authorization: Bearer <Cognito idToken>
-        v
-[ Amazon API Gateway (Prod) - Cognito Authorizer ]  <-- validates JWT, passes sub as userId
+        v  (Managed REST Proxy)
+[ Amazon API Gateway (Prod) ]
    |                |
    | POST /analyze  | GET /history
    v                v
 [ Lambda: analyze ] [ Lambda: history ]
    |    |                |
-   |    +--→ [ Bedrock Claude 3.5 Sonnet Vision ]  <-- 1-Step OCR + Marathi/Hindi/Bengali + Scam Heuristic
+   |    +--→ [ Amazon Textract ]              <-- Document OCR on physical notices & stamp paper
    |    |
-   +--→ [ DynamoDB Single Table: themis-documents ]  <-- PK/SK + GSI1, PAY_PER_REQUEST
+   |    +--→ [ Amazon Bedrock / Groq AI ]    <-- Dynamic legal simplification & scam heuristics
+   |    |
+   |    +--→ [ Amazon Polly Neural Voice ]   <-- Studio-quality Kajal (hi-IN) voice narration
+   |    |
+   +---→+--→ [ DynamoDB Single Table ]       <-- PK=USER#<id>, SK=DOC#<iso>#<id>, PAY_PER_REQUEST
    |
-[ Amazon S3 Bucket: themis-documents-* ]  <-- Photos uploaded via Presigned URLs, not via Lambda`}</pre>
+[ Amazon S3 Documents Bucket ]               <-- Scalable vault for original notice uploads`}</pre>
               </div>
             </div>
 
@@ -823,11 +832,29 @@ export default function App() {
                   <tbody className="divide-y divide-slate-800/60 text-slate-300">
                     <tr>
                       <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
-                        <Database className="w-4 h-4 text-amber-400" />
-                        <span>Amazon S3</span>
+                        <FileText className="w-4 h-4 text-cyan-400" />
+                        <span>Amazon Textract</span>
                       </td>
                       <td className="py-3">
-                        5MB legal photos cannot go into a database. Presigned URLs let the browser upload directly to S3, bypassing Lambda's 6MB payload limit.
+                        Physical legal notices, stamp papers, and summons feature dense tables and legal seals. Textract extracts raw text lines with judicial-grade fidelity without running heavy OCR libraries on Lambda.
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
+                        <Volume2 className="w-4 h-4 text-purple-400" />
+                        <span>Amazon Polly (Neural)</span>
+                      </td>
+                      <td className="py-3">
+                        Ordinary citizens with low legal literacy need voice assistance. Polly's studio-quality <code className="text-amber-300">Kajal (Neural Hindi)</code> engine produces natural human cadence, eliminating robotic browser speech.
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
+                        <Sparkles className="w-4 h-4 text-amber-400" />
+                        <span>Amazon Bedrock / Groq</span>
+                      </td>
+                      <td className="py-3">
+                        Dual generative engine. Uses Bedrock Converse API with Claude 3.5 Sonnet / Nova, backed by high-throughput LLMs, to synthesize statutory 5-point breakdowns, verify scam signals, and establish urgency deadlines.
                       </td>
                     </tr>
                     <tr>
@@ -836,34 +863,25 @@ export default function App() {
                         <span>DynamoDB (Single Table)</span>
                       </td>
                       <td className="py-3">
-                        Serverless, zero cold-starts, zero connection pooling issues. Single table with PK/SK handles user docs, reverse chronological sorting, and shares natively.
+                        Serverless, zero cold-starts, sub-10ms reads. Single-table design (<code className="text-amber-300">USER#&lt;id&gt;</code> / <code className="text-amber-300">DOC#&lt;timestamp&gt;#&lt;docId&gt;</code>) provides chronological user scan histories with zero operational overhead.
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
+                        <Database className="w-4 h-4 text-amber-400" />
+                        <span>Amazon S3</span>
+                      </td>
+                      <td className="py-3">
+                        Keeps multi-megabyte legal scans and PDFs out of DynamoDB. Secure presigned upload URLs allow direct browser uploads, preventing Lambda payload bottleneck.
                       </td>
                     </tr>
                     <tr>
                       <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
                         <Server className="w-4 h-4 text-blue-400" />
-                        <span>AWS Lambda (2 functions)</span>
+                        <span>AWS Lambda & SAM</span>
                       </td>
                       <td className="py-3">
-                        Scale to zero, zero cost when idle. 2 decoupled functions (<code className="text-amber-300">analyze</code>, <code className="text-amber-300">history</code>) minimize complexity and blast radius.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
-                        <Sparkles className="w-4 h-4 text-purple-400" />
-                        <span>Bedrock Claude 3.5 Sonnet</span>
-                      </td>
-                      <td className="py-3">
-                        One single multimodal API call executes OCR, Indian regional language translation (Marathi, Hindi, Bengali), and scam heuristics simultaneously.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
-                        <ShieldCheck className="w-4 h-4 text-teal-400" />
-                        <span>Cognito User Pools</span>
-                      </td>
-                      <td className="py-3">
-                        Protects confidential legal documents. API Gateway validates JWT directly at the perimeter and passes only validated identity (<code className="text-amber-300">sub</code>) to Lambdas.
+                        Decoupled functions (<code className="text-amber-300">analyze</code>, <code className="text-amber-300">history</code>) scale to zero with zero idle cost, managed entirely as code via AWS SAM.
                       </td>
                     </tr>
                   </tbody>
