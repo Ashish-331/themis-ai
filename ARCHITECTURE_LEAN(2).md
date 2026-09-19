@@ -56,8 +56,8 @@ Single-table DynamoDB covers `user → docs → chronologically sorted scans` wi
 | Service | Why It's Here |
 |---|---|
 | **Amazon Textract** | Physical stamp paper, court notices, and advocates' seals have complex layout. Textract extracts raw text lines with judicial-grade accuracy without bloated Lambda OCR binaries. |
-| **Amazon Polly (Neural)** | Accessibility for citizens with low legal literacy. Studio-quality `Kajal (Neural Hindi)` engine provides natural human inflection, replacing robotic local synthesizers. |
-| **Amazon Bedrock / Groq** | Generative legal reasoning. Uses Bedrock Converse API with Claude 3.5 Sonnet / Nova (with high-speed Groq fallback) to simplify archaic legal jargon into plain citizen points. |
+| **Amazon Polly (Neural)** | Accessibility for citizens with low legal literacy. Studio-quality `Kajal (Neural hi-IN & en-IN)` engine provides natural human inflection in Hindi, Marathi, and Indian English, replacing robotic browser speech. |
+| **Amazon Bedrock / Groq** | Generative legal reasoning. Uses Bedrock `InvokeModel` API with Claude 3.5 Sonnet / Nova (with high-speed Groq fallback) to simplify archaic legal jargon into 5 plain citizen points. |
 | **DynamoDB (Single Table)** | Serverless, zero connection pooling issues. PK (`USER#<id>`) and SK (`DOC#<timestamp>#<docId>`) handle reverse chronological querying natively. |
 | **Amazon S3** | 5MB legal photos cannot go into a database. Presigned URLs let the browser upload directly, bypassing Lambda's 6MB payload limit. |
 | **Lambda + API Gateway** | Serverless scale-to-zero compute. 2 decoupled functions (`analyze`, `history`) minimize complexity and blast radius. |

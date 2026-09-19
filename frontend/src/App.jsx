@@ -1,60 +1,72 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Scale, 
-  ShieldCheck, 
-  AlertTriangle, 
-  Clock, 
-  FileText, 
-  Upload, 
-  Volume2, 
-  VolumeX, 
-  History, 
-  CheckCircle2, 
-  ArrowRight, 
-  Sparkles, 
-  RefreshCw, 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  FileText,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Volume2,
+  VolumeX,
+  Upload,
+  RefreshCw,
+  Sparkles,
+  ShieldAlert,
+  ShieldCheck,
+  Scale,
+  History,
   Languages,
+  ArrowRight,
+  Info,
   Server,
   Database,
-  Cpu
+  Cpu,
+  PhoneCall,
+  X,
+  FileCheck2,
+  Camera
 } from 'lucide-react';
+import heroImg from './assets/hero.png';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const SAMPLE_DOCS = [
   {
-    name: 'Raksha Bandhan Legal Notice (Parody)',
+    name: 'Raksha Bandhan Notice (Parody)',
     fileName: 'raksha-bandhan-parody-notice.jpg',
-    description: 'Humorous notice under "Personal Emotional Damages Act, 2025" for bad chocolates',
-    url: '/sample_rakhi_notice.jpg'
+    description: 'Humorous letter under fictional "Personal Emotional Damages Act, 2025"',
+    url: '/sample_rakhi_notice.jpg',
+    type: 'Parody / Prank'
   },
   {
-    name: 'Standard Rent Agreement (11 Months)',
-    fileName: 'rent-agreement-mumbai.jpg',
-    description: 'Residential lease agreement for Mumbai apartment with security deposit',
-    url: null
+    name: 'Maharashtra Rent Agreement',
+    fileName: 'sample_rent_agreement.png',
+    description: 'Official 11-month Leave & License agreement with deposit and notice terms',
+    url: '/sample_rent_agreement.png',
+    type: 'Legitimate Agreement'
   },
   {
-    name: 'Property Notice / Summons',
-    fileName: 'legal-summons-notice.jpg',
-    description: 'Municipal corporation notice regarding property tax arrears',
-    url: null
+    name: 'Digital Arrest Extortion Notice',
+    fileName: 'sample_cyber_arrest_scam.png',
+    description: 'Fake CBI/ED extortion notice demanding Rs. 98,500 deposit via UPI within 2 hours',
+    url: '/sample_cyber_arrest_scam.png',
+    type: 'Cyber Crime Scam'
   },
   {
-    name: 'Section 138 Cheque Bounce Notice',
-    fileName: 'section-138-cheque-bounce.pdf',
+    name: 'Sec 138 Cheque Bounce Notice',
+    fileName: 'sample_cheque_bounce_notice.png',
     description: 'Statutory 15-day demand notice under Negotiable Instruments Act, 1881',
-    url: null
+    url: '/sample_cheque_bounce_notice.png',
+    type: 'Advocate Legal Notice'
   }
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('analyze'); // 'analyze' | 'history' | 'architecture'
-  const [language, setLanguage] = useState('hindi'); // Focused on Hindi
+  const [activeTab, setActiveTab] = useState('analyze'); // 'analyze' | 'history'
+  const [language, setLanguage] = useState('hindi'); // 'hindi' | 'bengali' | 'marathi'
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisStep, setAnalysisStep] = useState(1);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [historyList, setHistoryList] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -64,6 +76,32 @@ export default function App() {
   const [audioCache, setAudioCache] = useState({});
   const [voiceEngine, setVoiceEngine] = useState('Amazon Polly (Neural)');
   const [errorMessage, setErrorMessage] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showArchModal, setShowArchModal] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Stepper animation timer during analysis
+  useEffect(() => {
+    let timer;
+    if (isAnalyzing) {
+      setAnalysisStep(1);
+      timer = setInterval(() => {
+        setAnalysisStep((prev) => (prev < 3 ? prev + 1 : prev));
+      }, 2400);
+    } else {
+      setAnalysisStep(1);
+    }
+    return () => clearInterval(timer);
+  }, [isAnalyzing]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (currentAudio) {
+        currentAudio.pause();
+      }
+    };
+  }, [currentAudio]);
 
   // Fetch document history
   const fetchHistory = async () => {
@@ -76,7 +114,7 @@ export default function App() {
       setHistoryList(data.documents || []);
     } catch (err) {
       console.error('Failed to load history:', err);
-      setErrorMessage(`Could not load history from ${API_BASE_URL}. Ensure SAM local API is running.`);
+      setErrorMessage(`Could not load history from ${API_BASE_URL}. Ensure SAM local API is active.`);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -88,43 +126,103 @@ export default function App() {
     }
   }, [activeTab]);
 
-  // Handle file selection
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
+  // Compress large images in browser to avoid Lambda 6MB payload limits
+  const processFile = (file) => {
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMessage('File size exceeds 10MB. Please select a smaller document.');
+      return;
+    }
+
+    setSelectedFile(file);
+    setAnalysisResult(null);
+    stopSpeech();
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (isPdf) {
+      setFilePreview('PDF');
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFilePreview(reader.result);
         if (typeof reader.result === 'string') {
           setImageBase64(reader.result.split(',')[1]);
         }
       };
       reader.readAsDataURL(file);
-      setAnalysisResult(null);
+      return;
     }
+
+    // Image compression via Canvas
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1600;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setFilePreview(dataUrl);
+        setImageBase64(dataUrl.split(',')[1]);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  };
+
+  // Drag and Drop handlers
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
   };
 
   const handleSelectSample = async (sample) => {
-    setSelectedFile({ name: sample.fileName });
-    setFilePreview(sample.url || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=800');
+    setSelectedFile({ name: sample.fileName, size: 85000 });
+    setFilePreview(sample.url);
     setAnalysisResult(null);
-    if (sample.url) {
-      try {
-        const res = await fetch(sample.url);
-        const blob = await res.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (typeof reader.result === 'string') {
-            setImageBase64(reader.result.split(',')[1]);
-          }
-        };
-        reader.readAsDataURL(blob);
-      } catch (err) {
-        console.warn('Could not load sample blob:', err);
-      }
-    } else {
-      setImageBase64(null);
+    stopSpeech();
+
+    try {
+      const res = await fetch(sample.url);
+      const blob = await res.blob();
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setImageBase64(reader.result.split(',')[1]);
+        }
+      };
+      reader.readAsDataURL(blob);
+    } catch (err) {
+      console.warn('Could not load sample blob:', err);
     }
   };
 
@@ -164,7 +262,7 @@ export default function App() {
   // Helper to get consistent document cache key
   const getDocKey = (result) => result ? (result.SK || result.fileName || 'current-doc') : 'current-doc';
 
-  // Text to Speech: 100% Studio-Quality Amazon Polly Neural Voice with In-Memory Caching (0 re-fetch)
+  // Text to Speech: 100% Studio-Quality Amazon Polly Neural Voice with In-Memory Caching
   const toggleSpeech = async () => {
     if (!analysisResult || !analysisResult.summary) return;
     const docKey = getDocKey(analysisResult);
@@ -203,7 +301,7 @@ export default function App() {
     setErrorMessage(null);
 
     // Build a crisp narration script matching the selected document language
-    const currentLang = (analysisResult.language || selectedLanguage || 'hindi').toLowerCase();
+    const currentLang = (analysisResult.language || language || 'hindi').toLowerCase();
     const firstPoint = analysisResult.summary[0] || '';
     const secondPoint = analysisResult.summary[1] || '';
     
@@ -247,8 +345,7 @@ export default function App() {
 
       const data = await res.json();
       if (data.audioBase64) {
-        // Cache the audio for this document so subsequent clicks replay with 0 network calls!
-        setAudioCache(prev => ({
+        setAudioCache((prev) => ({
           ...prev,
           [docKey]: data.audioBase64
         }));
@@ -284,230 +381,267 @@ export default function App() {
     setIsSynthesizingSpeech(false);
   };
 
+  // Convert numerical confidence to qualitative trust level
+  const getQualitativeConfidence = (conf) => {
+    const val = conf || 0.85;
+    if (val >= 0.85) return { label: 'High (उच्च स्तर)', color: 'text-stone-900 bg-stone-100 border-stone-300' };
+    if (val >= 0.65) return { label: 'Moderate (मध्यम)', color: 'text-amber-800 bg-amber-50 border-amber-200' };
+    return { label: 'Low (संदेहास्पद)', color: 'text-rose-800 bg-rose-50 border-rose-200' };
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Top Navigation Bar */}
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-lg shadow-amber-500/20 text-slate-950 font-bold">
+    <div className="min-h-screen bg-[#FAF9F5] text-stone-900 flex flex-col font-sans selection:bg-amber-500/20 selection:text-amber-900">
+      {/* Top Header - Trust & Dignity */}
+      <header className="border-b border-stone-200 bg-white sticky top-0 z-40 shadow-xs">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-11 h-11 rounded-xl bg-stone-900 text-amber-400 flex items-center justify-center shadow-sm flex-shrink-0">
               <Scale className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-xl tracking-tight text-white">THEMIS</span>
-                <span className="px-2 py-0.5 text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full">
+                <span className="font-extrabold text-xl tracking-tight text-stone-900">THEMIS</span>
+                <span className="px-2 py-0.5 text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 rounded-md">
                   न्याय सहायक
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">
-                AI Legal Document Simplifier & Scam Heuristics
+              <p className="text-xs text-stone-600 font-medium hidden sm:block">
+                नागरिक कानूनी दस्तावेज़ विश्लेषक व साइबर फ्रॉड जांच (AI Legal Simplifier)
               </p>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="flex space-x-1 sm:space-x-2 bg-slate-800/60 p-1 rounded-lg border border-slate-700/50 text-sm font-medium">
-            <button
-              onClick={() => setActiveTab('analyze')}
-              className={`px-3 py-1.5 rounded-md transition-all flex items-center space-x-1.5 ${
-                activeTab === 'analyze'
-                  ? 'bg-amber-500 text-slate-950 font-semibold shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>Analyze</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`px-3 py-1.5 rounded-md transition-all flex items-center space-x-1.5 ${
-                activeTab === 'history'
-                  ? 'bg-amber-500 text-slate-950 font-semibold shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <History className="w-4 h-4" />
-              <span>History</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('architecture')}
-              className={`px-3 py-1.5 rounded-md transition-all flex items-center space-x-1.5 ${
-                activeTab === 'architecture'
-                  ? 'bg-amber-500 text-slate-950 font-semibold shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <Server className="w-4 h-4" />
-              <span className="hidden sm:inline">Architecture</span>
-            </button>
-          </nav>
+          {/* Citizen Primary Navigation */}
+          <div className="flex items-center space-x-2">
+            <nav className="flex bg-stone-100 p-1 rounded-xl border border-stone-200 text-sm font-semibold">
+              <button
+                onClick={() => setActiveTab('analyze')}
+                className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${
+                  activeTab === 'analyze'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <FileText className="w-4 h-4 text-amber-700" />
+                <span>दस्तावेज़ जांचें (Analyze)</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${
+                  activeTab === 'history'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <History className="w-4 h-4 text-amber-700" />
+                <span>पुराने दस्तावेज़ (History)</span>
+              </button>
+            </nav>
 
-          {/* User profile & AWS Region badge */}
-          <div className="flex items-center space-x-3">
-            <div className="text-right hidden md:block">
-              <span className="text-xs font-mono text-emerald-400 flex items-center justify-end space-x-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>ap-south-1 (Mumbai)</span>
-              </span>
-              <span className="text-xs text-slate-400">demo-user</span>
+            {/* AWS Region Badge (desktop only) */}
+            <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 bg-stone-50 border border-stone-200 rounded-lg text-[11px] font-mono text-stone-600">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>ap-south-1</span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Error alert if backend unreachable */}
+      {/* Error Alert Bar */}
       {errorMessage && (
-        <div className="bg-red-500/10 border-b border-red-500/20 px-4 py-3 text-red-400 text-sm flex items-center justify-between">
-          <div className="flex items-center space-x-2 max-w-7xl mx-auto w-full">
-            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-            <span>{errorMessage}</span>
+        <div className="bg-rose-50 border-b border-rose-200 px-4 py-3 text-rose-800 text-sm flex items-center justify-between">
+          <div className="flex items-center space-x-2 max-w-6xl mx-auto w-full">
+            <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+            <span className="font-medium">{errorMessage}</span>
           </div>
-          <button onClick={() => setErrorMessage(null)} className="text-red-400 hover:text-red-300 text-xs font-bold">
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="text-rose-700 hover:text-rose-900 text-xs font-bold px-2 py-1"
+          >
             Dismiss
           </button>
         </div>
       )}
 
       {/* Main Body */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8">
         {/* ================= TAB 1: ANALYZE ================= */}
         {activeTab === 'analyze' && (
           <div className="space-y-8">
-            {/* Top controls: Language Selector */}
-            <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+            {/* Citizen Language Switcher - Touch friendly (min-h 44px) */}
+            <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold text-white flex items-center space-x-2">
-                  <Languages className="w-5 h-5 text-amber-400" />
-                  <span>Target Simplification Language</span>
+                <h2 className="text-base font-bold text-stone-900 flex items-center space-x-2">
+                  <Languages className="w-5 h-5 text-amber-600" />
+                  <span>सरल भाषा चुनें (Target Simplification Language)</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  Choose the language in which you want the legal points explained and read aloud.
+                <p className="text-xs text-stone-600 mt-0.5">
+                  दस्तावेज़ के 5 मुख्य बिंदु और ऑडियो किस भाषा में समझना चाहते हैं?
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2.5 sm:w-auto w-full">
                 {[
-                  { id: 'bengali', label: 'Bengali (বাংলা)', sub: 'পূর্বাঞ্চলীয়' },
-                  { id: 'marathi', label: 'Marathi (मराठी)', sub: 'महाराष्ट्र' },
-                  { id: 'hindi', label: 'Hindi (हिंदी)', sub: 'राष्ट्रीय' }
+                  { id: 'hindi', label: 'हिंदी (Hindi)', sub: 'राष्ट्रभाषा • देवनागरी' },
+                  { id: 'bengali', label: 'বাংলা (Bengali)', sub: 'পূর্বাঞ্চলীয় • বাংলা' },
+                  { id: 'marathi', label: 'मराठी (Marathi)', sub: 'महाराष्ट्र • देवनागरी' }
                 ].map((lang) => (
                   <button
                     key={lang.id}
                     onClick={() => setLanguage(lang.id)}
-                    className={`px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all flex flex-col items-center ${
+                    className={`min-h-[46px] px-4 py-2 rounded-xl border text-sm font-semibold transition-all flex flex-col items-center justify-center cursor-pointer ${
                       language === lang.id
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-md shadow-amber-500/10 ring-2 ring-amber-500/20'
-                        : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                        ? 'bg-amber-600 border-amber-700 text-white shadow-sm'
+                        : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 hover:border-stone-300'
                     }`}
                   >
                     <span>{lang.label}</span>
-                    <span className="text-[10px] text-slate-500 font-normal">{lang.sub}</span>
+                    <span className={`text-[10px] font-normal ${language === lang.id ? 'text-amber-100' : 'text-stone-500'}`}>
+                      {lang.sub}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Two Column Layout: Left upload, Right results */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Layout: Left Upload & Samples, Right Results */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               {/* Left Column: Upload & Samples (5 cols) */}
               <div className="lg:col-span-5 space-y-6">
                 {/* Upload Card */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-                  <h3 className="font-bold text-white text-base mb-3 flex items-center space-x-2">
-                    <Upload className="w-4 h-4 text-amber-400" />
-                    <span>Upload Legal Notice / Agreement</span>
+                <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs">
+                  <h3 className="font-bold text-stone-900 text-base mb-1.5 flex items-center space-x-2">
+                    <Upload className="w-5 h-5 text-amber-600" />
+                    <span>दस्तावेज़ अपलोड करें (Upload Document)</span>
                   </h3>
+                  <p className="text-xs text-stone-600 mb-4">
+                    कोर्ट समन, रेंट एग्रीमेंट, पुलिस नोटिस या संदिग्ध बैंक पत्र का फोटो लें या PDF अपलोड करें।
+                  </p>
 
-                  <label className="border-2 border-dashed border-slate-700 hover:border-amber-500/60 transition-colors rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer bg-slate-950/40 group">
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all ${
+                      isDragging
+                        ? 'border-amber-600 bg-amber-50/50 scale-[1.01]'
+                        : 'border-stone-300 hover:border-amber-600/70 bg-stone-50/70'
+                    }`}
+                  >
                     <input
+                      ref={fileInputRef}
                       type="file"
-                      accept="image/*,.pdf"
+                      accept="image/png,image/jpeg,image/jpg,.pdf"
+                      capture="environment"
                       onChange={handleFileChange}
                       className="hidden"
                     />
-                    <div className="w-14 h-14 rounded-full bg-slate-800/80 group-hover:bg-amber-500/10 flex items-center justify-center text-slate-400 group-hover:text-amber-400 transition-all mb-3">
-                      <FileText className="w-7 h-7" />
+                    <div className="w-13 h-13 rounded-full bg-white border border-stone-200 flex items-center justify-center text-amber-700 shadow-xs mb-3">
+                      <Camera className="w-6 h-6" />
                     </div>
-                    <span className="text-sm font-medium text-slate-200 text-center">
-                      Click to upload or drag & drop
+                    <span className="text-sm font-semibold text-stone-800 text-center">
+                      फोटो खींचें या फाइल चुनें
                     </span>
-                    <span className="text-xs text-slate-500 mt-1">PNG, JPG, PDF up to 10MB</span>
-                  </label>
+                    <span className="text-xs text-stone-500 mt-1">
+                      Camera, PNG, JPG, PDF (अधिकतम 10MB)
+                    </span>
+                  </div>
 
-                  {/* Preview if file selected */}
+                  {/* Selected File Card */}
                   {selectedFile && (
-                    <div className="mt-4 p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-between">
+                    <div className="mt-4 p-3 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-between">
                       <div className="flex items-center space-x-3 overflow-hidden">
-                        {filePreview && typeof filePreview === 'string' && (filePreview.startsWith('data:image') || filePreview.startsWith('http')) ? (
-                          <img src={filePreview} alt="Preview" className="w-10 h-10 object-cover rounded-lg border border-slate-700 flex-shrink-0" />
+                        {filePreview && filePreview !== 'PDF' ? (
+                          <img
+                            src={filePreview}
+                            alt="Document Preview"
+                            className="w-12 h-12 object-cover rounded-lg border border-stone-300 flex-shrink-0"
+                          />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 flex-shrink-0 font-bold text-xs">
-                            {selectedFile.name.endsWith('.pdf') ? 'PDF' : 'DOC'}
+                          <div className="w-12 h-12 rounded-lg bg-amber-100 border border-amber-300 flex flex-col items-center justify-center text-amber-900 flex-shrink-0 font-bold text-xs">
+                            <FileText className="w-5 h-5" />
+                            <span>PDF</span>
                           </div>
                         )}
                         <div className="truncate">
-                          <p className="text-sm font-medium text-white truncate">{selectedFile.name}</p>
-                          <p className="text-xs text-slate-400">Ready for Textract & legal analysis</p>
+                          <p className="text-sm font-semibold text-stone-900 truncate">{selectedFile.name}</p>
+                          <p className="text-xs text-stone-500 flex items-center space-x-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>जांच के लिए तैयार (Ready)</span>
+                          </p>
                         </div>
                       </div>
                       <button
-                        onClick={() => { setSelectedFile(null); setFilePreview(null); setAnalysisResult(null); }}
-                        className="text-slate-400 hover:text-red-400 text-xs px-2 py-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedFile(null);
+                          setFilePreview(null);
+                          setImageBase64(null);
+                          setAnalysisResult(null);
+                        }}
+                        className="text-stone-400 hover:text-rose-600 p-1 rounded-md"
+                        title="Remove file"
                       >
-                        Remove
+                        <X className="w-5 h-5" />
                       </button>
                     </div>
                   )}
 
-                  {/* Submit Button */}
+                  {/* Action Button */}
                   <button
                     disabled={!selectedFile || isAnalyzing}
                     onClick={handleAnalyze}
-                    className={`w-full mt-5 py-3.5 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center space-x-2 shadow-lg ${
+                    className={`w-full mt-5 py-3.5 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center space-x-2 shadow-xs cursor-pointer ${
                       !selectedFile || isAnalyzing
-                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-amber-500/20 active:scale-[0.99]'
+                        ? 'bg-stone-200 text-stone-500 cursor-not-allowed'
+                        : 'bg-stone-900 hover:bg-stone-800 text-white active:scale-[0.99]'
                     }`}
                   >
                     {isAnalyzing ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Analyzing Document with Claude Vision...</span>
+                        <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+                        <span>दस्तावेज़ की कानूनी जांच जारी है...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4" />
-                        <span>Analyze & Simplify in {language.toUpperCase()}</span>
+                        <Sparkles className="w-4 h-4 text-amber-400" />
+                        <span>5 बिंदुओं में समझें ({language.toUpperCase()})</span>
                       </>
                     )}
                   </button>
                 </div>
 
-                {/* Quick Test Samples */}
-                <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
+                {/* 1-Click Samples for Testing */}
+                <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-xs">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold tracking-wider text-slate-400 uppercase">
-                      Quick 1-Click Samples
+                    <span className="text-xs font-bold tracking-wider text-stone-700 uppercase">
+                      नमूना दस्तावेज़ (Sample Documents)
                     </span>
-                    <span className="text-[11px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                      Judge Testing
+                    <span className="text-[11px] text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 font-medium">
+                      तुरंत परीक्षण (1-Click Test)
                     </span>
                   </div>
-                  <div className="space-y-2">
+
+                  <div className="space-y-2.5">
                     {SAMPLE_DOCS.map((sample, idx) => (
                       <button
                         key={idx}
                         onClick={() => handleSelectSample(sample)}
-                        className="w-full text-left p-3 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-slate-700 hover:bg-slate-800/40 transition-all flex items-center justify-between group"
+                        className="w-full text-left p-3 rounded-xl border border-stone-200 bg-stone-50/50 hover:bg-stone-100/80 hover:border-stone-300 transition-all flex items-center justify-between group cursor-pointer"
                       >
-                        <div>
-                          <p className="text-sm font-semibold text-slate-200 group-hover:text-amber-300 transition-colors">
-                            {sample.name}
-                          </p>
-                          <p className="text-xs text-slate-400 mt-0.5">{sample.description}</p>
+                        <div className="pr-2">
+                          <div className="flex items-center space-x-2">
+                            <p className="text-sm font-semibold text-stone-900 group-hover:text-amber-800 transition-colors">
+                              {sample.name}
+                            </p>
+                            <span className="text-[10px] px-1.5 py-0.2 bg-stone-200 text-stone-700 rounded font-medium">
+                              {sample.type}
+                            </span>
+                          </div>
+                          <p className="text-xs text-stone-600 mt-0.5 line-clamp-1">{sample.description}</p>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-transform group-hover:translate-x-1" />
+                        <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-stone-800 transition-transform group-hover:translate-x-1 flex-shrink-0" />
                       </button>
                     ))}
                   </div>
@@ -516,174 +650,242 @@ export default function App() {
 
               {/* Right Column: Analysis Results (7 cols) */}
               <div className="lg:col-span-7">
+                {/* Empty State: Empathetic 3-Step Citizen Guide */}
                 {!analysisResult && !isAnalyzing && (
-                  <div className="h-full border border-dashed border-slate-800 bg-slate-900/30 rounded-2xl p-12 flex flex-col items-center justify-center text-center text-slate-500 space-y-4">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600">
-                      <Scale className="w-8 h-8" />
+                  <div className="bg-white border border-stone-200 rounded-2xl p-8 sm:p-10 shadow-xs flex flex-col items-center text-center">
+                    <div className="w-20 h-20 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 mb-5">
+                      <Scale className="w-10 h-10" />
                     </div>
-                    <div>
-                      <h4 className="text-base font-semibold text-slate-300">No Document Analyzed Yet</h4>
-                      <p className="text-sm text-slate-500 max-w-sm mt-1">
-                        Select a sample on the left or upload a notice/agreement photo to receive an instant simplified breakdown and scam assessment.
-                      </p>
-                    </div>
-                  </div>
-                )}
+                    <h3 className="text-xl font-bold text-stone-900">
+                      सरकारी कागज़ या नोटिस का डर खत्म
+                    </h3>
+                    <p className="text-sm text-stone-600 max-w-md mt-1.5 leading-relaxed">
+                      थेमिस (Themis) कठिन कानूनी भाषा को आपकी मातृभाषा में 5 आसान बिंदुओं में बदलता है और फर्जीवाड़े से सचेत करता है।
+                    </p>
 
-                {isAnalyzing && (
-                  <div className="h-full border border-slate-800 bg-slate-900/50 rounded-2xl p-12 flex flex-col items-center justify-center text-center space-y-5">
-                    <div className="relative">
-                      <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                        <Sparkles className="w-8 h-8 animate-pulse" />
+                    {/* 3 Step Visual */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full mt-8 pt-6 border-t border-stone-100 text-left">
+                      <div className="p-4 rounded-xl bg-stone-50 border border-stone-200/70">
+                        <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">कदम १</span>
+                        <h4 className="text-sm font-bold text-stone-900 mt-2">फोटो या PDF दें</h4>
+                        <p className="text-xs text-stone-600 mt-1">मोबाइल से फोटो खींचें या फाइल अपलोड करें।</p>
                       </div>
-                      <div className="absolute inset-0 rounded-2xl border-2 border-amber-400 border-t-transparent animate-spin"></div>
-                    </div>
-                    <div>
-                      <h4 className="text-base font-bold text-white">Analyzing Legal Document</h4>
-                      <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                        Extracting legal terminology, calculating scam heuristics, and translating to {language.toUpperCase()}...
-                      </p>
+                      <div className="p-4 rounded-xl bg-stone-50 border border-stone-200/70">
+                        <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">कदम २</span>
+                        <h4 className="text-sm font-bold text-stone-900 mt-2">मातृभाषा चुनें</h4>
+                        <p className="text-xs text-stone-600 mt-1">हिंदी, बांग्ला या मराठी में सरलीकरण पाएं।</p>
+                      </div>
+                      <div className="p-4 rounded-xl bg-stone-50 border border-stone-200/70">
+                        <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">कदम ३</span>
+                        <h4 className="text-sm font-bold text-stone-900 mt-2">सुनें व समझें</h4>
+                        <p className="text-xs text-stone-600 mt-1">Amazon Polly की प्राकृतिक आवाज में सुनें।</p>
+                      </div>
                     </div>
                   </div>
                 )}
 
+                {/* Loading Stepper Animation */}
+                {isAnalyzing && (
+                  <div className="bg-white border border-stone-200 rounded-2xl p-10 shadow-xs flex flex-col items-center justify-center text-center space-y-6">
+                    <div className="relative">
+                      <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-300 flex items-center justify-center text-amber-700">
+                        <Scale className="w-8 h-8 animate-pulse" />
+                      </div>
+                      <div className="absolute -inset-1.5 rounded-2xl border-2 border-amber-600 border-t-transparent animate-spin"></div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-lg font-bold text-stone-900">दस्तावेज़ की गहराई से जांच हो रही है...</h4>
+                      <p className="text-xs text-stone-500 mt-1">कृप्या प्रतीक्षा करें, यह प्रक्रिया 4 से 6 सेकंड लेती है।</p>
+                    </div>
+
+                    {/* Sequential Progress Steps */}
+                    <div className="w-full max-w-sm space-y-3 text-left">
+                      <div className={`p-3 rounded-xl border text-xs font-medium flex items-center space-x-3 transition-all ${
+                        analysisStep >= 1 ? 'bg-amber-50 border-amber-300 text-stone-900' : 'bg-stone-50 border-stone-200 text-stone-400'
+                      }`}>
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                          analysisStep > 1 ? 'bg-emerald-600 text-white' : 'bg-amber-600 text-white'
+                        }`}>
+                          {analysisStep > 1 ? '✓' : '1'}
+                        </div>
+                        <span>१. Amazon Textract से कानूनी शब्दों को पढ़ना (OCR)</span>
+                      </div>
+
+                      <div className={`p-3 rounded-xl border text-xs font-medium flex items-center space-x-3 transition-all ${
+                        analysisStep >= 2 ? 'bg-amber-50 border-amber-300 text-stone-900' : 'bg-stone-50 border-stone-200 text-stone-400'
+                      }`}>
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                          analysisStep > 2 ? 'bg-emerald-600 text-white' : (analysisStep === 2 ? 'bg-amber-600 text-white' : 'bg-stone-300 text-stone-600')
+                        }`}>
+                          {analysisStep > 2 ? '✓' : '2'}
+                        </div>
+                        <span>२. AI लीगल इंजन द्वारा धाराओं व शर्तों का विश्लेषण</span>
+                      </div>
+
+                      <div className={`p-3 rounded-xl border text-xs font-medium flex items-center space-x-3 transition-all ${
+                        analysisStep >= 3 ? 'bg-amber-50 border-amber-300 text-stone-900' : 'bg-stone-50 border-stone-200 text-stone-400'
+                      }`}>
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                          analysisStep === 3 ? 'bg-amber-600 text-white' : 'bg-stone-300 text-stone-600'
+                        }`}>
+                          3
+                        </div>
+                        <span>३. फर्जीवाड़े की जांच व मातृभाषा रिपोर्ट तैयार करना</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Analysis Results View */}
                 {analysisResult && !isAnalyzing && (
-                  <div className="space-y-5 animate-in fade-in duration-300">
-                    {/* Result Header & Audio Voiceover Button */}
-                    <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-xl">
+                  <div className="space-y-6 animate-in fade-in duration-300">
+                    {/* Top Result Card with Multilingual Audio Player */}
+                    <div className="bg-white border border-stone-200 p-5 rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <div className="flex items-center space-x-2">
-                          <span className="text-xs font-mono uppercase bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20 font-bold">
+                          <span className="text-xs font-bold uppercase bg-stone-100 text-stone-800 px-2.5 py-0.5 rounded border border-stone-300">
                             {analysisResult.language}
                           </span>
-                          {analysisResult.aiProvider && (
-                            <span className="text-xs font-mono bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/20 font-medium flex items-center space-x-1">
-                              <Cpu className="w-3 h-3 inline mr-1" />
-                              <span>{analysisResult.aiProvider}</span>
-                            </span>
-                          )}
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-stone-500 font-mono">
                             {new Date(analysisResult.createdAt).toLocaleTimeString()}
                           </span>
                         </div>
-                        <h3 className="font-bold text-white text-lg mt-1 truncate max-w-md">
+                        <h3 className="font-bold text-stone-900 text-lg mt-1 truncate max-w-md">
                           {analysisResult.fileName}
                         </h3>
                       </div>
 
+                      {/* Amazon Polly Voiceover Button */}
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={toggleSpeech}
                           disabled={isSynthesizingSpeech}
-                          className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center space-x-2 border transition-all ${
+                          className={`min-h-[44px] px-4 py-2 rounded-xl text-sm font-bold flex items-center space-x-2 border transition-all cursor-pointer ${
                             isSpeaking
-                              ? 'bg-amber-500 text-slate-950 border-amber-400 animate-pulse'
+                              ? 'bg-amber-600 text-white border-amber-700 shadow-sm animate-pulse'
                               : isSynthesizingSpeech
-                              ? 'bg-slate-800 text-amber-400 border-amber-500/40 animate-pulse'
-                              : 'bg-slate-800 text-slate-200 border-slate-700 hover:border-amber-400 hover:text-white'
+                              ? 'bg-amber-50 text-amber-800 border-amber-300'
+                              : 'bg-stone-900 hover:bg-stone-800 text-white border-stone-900 shadow-xs'
                           }`}
                         >
                           {isSynthesizingSpeech ? (
-                            <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+                            <RefreshCw className="w-4 h-4 animate-spin text-amber-600" />
                           ) : isSpeaking ? (
-                            <VolumeX className="w-4 h-4 text-slate-950" />
-                          ) : audioCache[getDocKey(analysisResult)] ? (
-                            <Volume2 className="w-4 h-4 text-emerald-400" />
+                            <VolumeX className="w-4 h-4 text-white" />
                           ) : (
                             <Volume2 className="w-4 h-4 text-amber-400" />
                           )}
                           <span>
                             {isSynthesizingSpeech
-                              ? 'Generating Polly Neural...'
+                              ? 'ऑडियो तैयार हो रहा है...'
                               : isSpeaking
-                              ? 'Pause Voiceover'
+                              ? 'रुकें (Pause)'
                               : audioCache[getDocKey(analysisResult)]
-                              ? 'Replay Hindi Voice (Instant)'
-                              : 'Hindi Neural Voiceover (Amazon Polly)'}
+                              ? 'फिर से सुनें (Replay)'
+                              : 'सुनें (Listen Audio)'}
                           </span>
                           {audioCache[getDocKey(analysisResult)] && !isSpeaking && !isSynthesizingSpeech && (
-                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-mono px-1.5 py-0.5 rounded ml-1 border border-emerald-500/30">
+                            <span className="text-[10px] bg-emerald-100 text-emerald-900 font-mono px-1.5 py-0.5 rounded ml-1 border border-emerald-300 font-bold">
                               Cached
                             </span>
                           )}
                         </button>
-                        {voiceEngine && (
-                          <span className="hidden md:inline-flex text-[10px] font-mono bg-purple-500/10 text-purple-300 px-2 py-1 rounded-lg border border-purple-500/20">
-                            {voiceEngine}
-                          </span>
-                        )}
                       </div>
                     </div>
 
-                    {/* Scam Risk Assessment Card */}
-                    <div className={`border p-5 rounded-2xl shadow-lg flex items-start space-x-4 ${
-                      analysisResult.isScam
-                        ? 'bg-red-950/30 border-red-500/40 text-red-200'
-                        : 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200'
-                    }`}>
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        analysisResult.isScam ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'
-                      }`}>
-                        {analysisResult.isScam ? <AlertTriangle className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
+                    {/* Dominant Scam Risk Assessment Banner (Colorblind-Safe) */}
+                    <div
+                      className={`p-6 rounded-2xl border-2 shadow-xs flex items-start space-x-4 ${
+                        analysisResult.isScam
+                          ? 'bg-rose-50/80 border-rose-500 text-rose-950'
+                          : 'bg-emerald-50/80 border-emerald-600 text-emerald-950'
+                      }`}
+                    >
+                      <div
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs ${
+                          analysisResult.isScam ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'
+                        }`}
+                      >
+                        {analysisResult.isScam ? <AlertTriangle className="w-7 h-7" /> : <ShieldCheck className="w-7 h-7" />}
                       </div>
+
                       <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-bold text-base">
-                            {analysisResult.isScam ? 'Potential Scam Warning' : 'Legitimate Document Assessment'}
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h4 className="font-extrabold text-lg tracking-tight">
+                            {analysisResult.isScam
+                              ? '🛑 सावधान: संदिग्ध या फर्जी दस्तावेज़ (Scam / Warning)'
+                              : '✅ सुरक्षित: आधिकारिक व वैध कानूनी दस्तावेज़ (Legitimate)'}
                           </h4>
-                          <span className="text-xs font-mono px-2 py-0.5 rounded bg-black/40 border border-white/10 font-bold">
-                            Confidence: {Math.round((analysisResult.confidence || 0.88) * 100)}%
+
+                          {/* Qualitative Confidence Badge */}
+                          <span
+                            className={`text-xs px-2.5 py-0.5 rounded-md border font-semibold ${
+                              getQualitativeConfidence(analysisResult.confidence).color
+                            }`}
+                          >
+                            विश्वास स्तर: {getQualitativeConfidence(analysisResult.confidence).label}
                           </span>
                         </div>
-                        <p className="text-sm mt-1 opacity-90">{analysisResult.scamReason}</p>
+
+                        <p className="text-sm mt-2 font-vernacular leading-relaxed opacity-95">
+                          {analysisResult.scamReason}
+                        </p>
                       </div>
                     </div>
 
-                    {/* Urgency Alert */}
-                    <div className="bg-amber-950/30 border border-amber-500/30 p-4 rounded-xl flex items-center space-x-3 text-amber-200">
-                      <Clock className="w-5 h-5 text-amber-400 flex-shrink-0" />
-                      <div className="text-sm">
-                        <span className="font-bold">Required Timeline: </span>
-                        <span>{analysisResult.urgency}</span>
+                    {/* Required Timeline / Urgency Alert */}
+                    {analysisResult.urgency && (
+                      <div className="bg-amber-50 border border-amber-300 p-4 rounded-xl flex items-start space-x-3 text-amber-950">
+                        <Clock className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm leading-relaxed">
+                          <span className="font-bold">आवश्यक समय-सीमा (Timeline): </span>
+                          <span className="font-vernacular">{analysisResult.urgency}</span>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* 5-Point Simplified Breakdown */}
-                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
-                      <h4 className="text-base font-bold text-white mb-4 flex items-center space-x-2">
-                        <FileText className="w-4 h-4 text-amber-400" />
-                        <span>5-Point Legal Simplification ({analysisResult.language.toUpperCase()})</span>
+                    <div className="bg-white border border-stone-200 p-6 rounded-2xl shadow-xs">
+                      <h4 className="text-base font-bold text-stone-900 mb-4 flex items-center space-x-2">
+                        <FileText className="w-5 h-5 text-amber-700" />
+                        <span>5 मुख्य बिंदु ({analysisResult.language.toUpperCase()})</span>
                       </h4>
-                      <ul className="space-y-3">
+
+                      <ul className="space-y-3.5">
                         {analysisResult.summary.map((point, index) => (
-                          <li key={index} className="flex items-start space-x-3 text-sm text-slate-200">
-                            <span className="w-5 h-5 rounded-full bg-slate-800 text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 border border-slate-700">
+                          <li key={index} className="flex items-start space-x-3.5 text-stone-900">
+                            <span className="w-6 h-6 rounded-full bg-stone-900 text-amber-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-1">
                               {index + 1}
                             </span>
-                            <span className="leading-relaxed">{point}</span>
+                            <span className="font-vernacular text-base leading-relaxed">{point}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
 
                     {/* Recommended Next Steps */}
-                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
-                      <h4 className="text-base font-bold text-white mb-4 flex items-center space-x-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        <span>Actionable Next Steps</span>
+                    <div className="bg-white border border-stone-200 p-6 rounded-2xl shadow-xs">
+                      <h4 className="text-base font-bold text-stone-900 mb-4 flex items-center space-x-2">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-700" />
+                        <span>आगे क्या करें? (Actionable Next Steps)</span>
                       </h4>
+
                       <div className="space-y-2.5">
                         {analysisResult.nextSteps.map((step, index) => (
-                          <div key={index} className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center space-x-3 text-sm text-slate-300">
-                            <ArrowRight className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                            <span>{step}</span>
+                          <div
+                            key={index}
+                            className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 flex items-start space-x-3 text-sm text-stone-800"
+                          >
+                            <ArrowRight className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-1" />
+                            <span className="font-vernacular text-sm leading-relaxed">{step}</span>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    {/* Disclaimer */}
-                    <p className="text-[11px] text-slate-500 italic text-center">
+                    {/* Legal Disclaimer */}
+                    <p className="text-xs text-stone-500 italic text-center px-4">
                       * {analysisResult.disclaimer}
                     </p>
                   </div>
@@ -698,220 +900,201 @@ export default function App() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-white flex items-center space-x-2">
-                  <History className="w-5 h-5 text-amber-400" />
-                  <span>Document Analysis History</span>
+                <h2 className="text-xl font-bold text-stone-900 flex items-center space-x-2">
+                  <History className="w-5 h-5 text-amber-700" />
+                  <span>आपके पुराने दस्तावेज़ (Document History)</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Chronological records retrieved directly from DynamoDB single table (<code className="font-mono text-amber-400">themis-documents</code>)
+                <p className="text-xs text-stone-600 mt-0.5">
+                  आपके द्वारा पूर्व में जाँचे गए दस्तावेज़ों के सुरक्षित रिकॉर्ड
                 </p>
               </div>
 
               <button
                 onClick={fetchHistory}
                 disabled={isLoadingHistory}
-                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-bold flex items-center space-x-1.5 text-slate-200 transition-all"
+                className="px-4 py-2 bg-white hover:bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold flex items-center space-x-1.5 text-stone-800 shadow-xs cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoadingHistory ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
+                <span>रीफ्रेश करें (Refresh)</span>
               </button>
             </div>
 
             {isLoadingHistory && (
-              <div className="text-center py-16 text-slate-500">
-                <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-amber-400" />
-                <p className="text-sm">Fetching records from DynamoDB...</p>
+              <div className="text-center py-16 text-stone-500">
+                <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-amber-700" />
+                <p className="text-sm font-medium">रिकॉर्ड लोड हो रहे हैं...</p>
               </div>
             )}
 
             {!isLoadingHistory && historyList.length === 0 && (
-              <div className="border border-dashed border-slate-800 rounded-2xl p-16 text-center text-slate-500">
-                <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm font-medium">No documents stored in history yet.</p>
-                <p className="text-xs text-slate-600 mt-1">Analyze a document in the Analyze tab to save your first record.</p>
+              <div className="bg-white border border-dashed border-stone-300 rounded-2xl p-16 text-center text-stone-500">
+                <FileText className="w-10 h-10 mx-auto mb-2 opacity-30 text-stone-400" />
+                <p className="text-sm font-semibold text-stone-700">अभी तक कोई दस्तावेज़ सहेजा नहीं गया है।</p>
+                <p className="text-xs text-stone-500 mt-1">जब आप कोई कानूनी नोटिस जांचेंगे, वह यहाँ सुरक्षित रहेगा।</p>
               </div>
             )}
 
             {!isLoadingHistory && historyList.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {historyList.map((doc, idx) => (
                   <div
                     key={idx}
-                    className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between hover:border-slate-700 transition-all"
+                    onClick={() => {
+                      setAnalysisResult(doc);
+                      setActiveTab('analyze');
+                    }}
+                    className="bg-white p-5 rounded-2xl border border-stone-200 hover:border-stone-400 hover:shadow-xs transition-all cursor-pointer group"
                   >
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-1">
-                          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase font-bold">
-                            {doc.language || 'Bengali'}
-                          </span>
-                          {doc.aiProvider && (
-                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-medium truncate max-w-[130px]">
-                              {doc.aiProvider}
-                            </span>
-                          )}
-                        </div>
-                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center space-x-1 ${
-                          doc.isScam ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        }`}>
-                          {doc.isScam ? 'Scam Warning' : 'Legitimate'}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span
+                          className={`text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center space-x-1 ${
+                            doc.isScam
+                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}
+                        >
+                          {doc.isScam ? <AlertTriangle className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                          <span>{doc.isScam ? 'Scam Warning' : 'Legitimate'}</span>
+                        </span>
+                        <span className="text-xs font-mono uppercase bg-stone-100 text-stone-700 px-2 py-0.5 rounded">
+                          {doc.language}
                         </span>
                       </div>
 
-                      <h4 className="font-bold text-white text-sm truncate mb-1" title={doc.fileName}>
-                        {doc.fileName}
-                      </h4>
-                      <p className="text-xs text-slate-500 mb-3">
-                        {new Date(doc.createdAt).toLocaleString()}
-                      </p>
-
-                      <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80 mb-3">
-                        <p className="text-xs text-slate-300 line-clamp-3">
-                          {doc.summary?.[0] || 'Document breakdown point...'}
-                        </p>
-                      </div>
+                      <span className="text-xs text-stone-500 font-mono">
+                        {new Date(doc.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        setAnalysisResult(doc);
-                        setLanguage(doc.language || 'bengali');
-                        setActiveTab('analyze');
-                      }}
-                      className="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold rounded-xl text-slate-200 flex items-center justify-center space-x-1.5 transition-colors"
-                    >
-                      <span>View Full Breakdown</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
+                    <h4 className="font-bold text-stone-900 text-base mt-3 truncate group-hover:text-amber-800 transition-colors">
+                      {doc.fileName}
+                    </h4>
+
+                    <p className="text-xs text-stone-600 mt-1 font-vernacular line-clamp-2">
+                      {doc.summary && doc.summary[0]}
+                    </p>
+
+                    <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500 font-medium">
+                      <span>क्लिक करके पूरा विवरण देखें</span>
+                      <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-stone-800 transition-transform group-hover:translate-x-1" />
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
         )}
-
-        {/* ================= TAB 3: ARCHITECTURE & DEFENSE ================= */}
-        {activeTab === 'architecture' && (
-          <div className="space-y-8 max-w-5xl mx-auto">
-            <div>
-              <h2 className="text-2xl font-black text-white tracking-tight flex items-center space-x-2">
-                <Server className="w-6 h-6 text-amber-400" />
-                <span>Themis — Lean Ship It Architecture v3</span>
-              </h2>
-              <p className="text-sm text-slate-400 mt-1">
-                Every service must survive: <span className="text-amber-400 italic font-medium">"Why is this here? Explain in 10 seconds."</span>
-              </p>
-            </div>
-
-            {/* Visual Architecture Flow */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-                End-to-End System Diagram
-              </h3>
-
-              <div className="p-6 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 leading-relaxed overflow-x-auto">
-                <pre>{`[ React Frontend on AWS Amplify ]
-        |
-        v  (Managed REST Proxy)
-[ Amazon API Gateway (Prod) ]
-   |                |
-   | POST /analyze  | GET /history
-   v                v
-[ Lambda: analyze ] [ Lambda: history ]
-   |    |                |
-   |    +--→ [ Amazon Textract ]              <-- Document OCR on physical notices & stamp paper
-   |    |
-   |    +--→ [ Amazon Bedrock / Groq AI ]    <-- Dynamic legal simplification & scam heuristics
-   |    |
-   |    +--→ [ Amazon Polly Neural Voice ]   <-- Studio-quality Kajal (hi-IN) voice narration
-   |    |
-   +---→+--→ [ DynamoDB Single Table ]       <-- PK=USER#<id>, SK=DOC#<iso>#<id>, PAY_PER_REQUEST
-   |
-[ Amazon S3 Documents Bucket ]               <-- Scalable vault for original notice uploads`}</pre>
-              </div>
-            </div>
-
-            {/* 10-Second Defense Table */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4">
-                10-Second Service Justification (For Judges)
-              </h3>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-xs uppercase text-amber-400 font-bold">
-                      <th className="pb-3 pr-4">AWS Service</th>
-                      <th className="pb-3">10-Second Defense</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                    <tr>
-                      <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
-                        <FileText className="w-4 h-4 text-cyan-400" />
-                        <span>Amazon Textract</span>
-                      </td>
-                      <td className="py-3">
-                        Physical legal notices, stamp papers, and summons feature dense tables and legal seals. Textract extracts raw text lines with judicial-grade fidelity without running heavy OCR libraries on Lambda.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
-                        <Volume2 className="w-4 h-4 text-purple-400" />
-                        <span>Amazon Polly (Neural)</span>
-                      </td>
-                      <td className="py-3">
-                        Ordinary citizens with low legal literacy need voice assistance. Polly's studio-quality <code className="text-amber-300">Kajal (Neural Hindi)</code> engine produces natural human cadence, eliminating robotic browser speech.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
-                        <Sparkles className="w-4 h-4 text-amber-400" />
-                        <span>Amazon Bedrock / Groq</span>
-                      </td>
-                      <td className="py-3">
-                        Dual generative engine. Uses Bedrock Converse API with Claude 3.5 Sonnet / Nova, backed by high-throughput LLMs, to synthesize statutory 5-point breakdowns, verify scam signals, and establish urgency deadlines.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
-                        <Database className="w-4 h-4 text-emerald-400" />
-                        <span>DynamoDB (Single Table)</span>
-                      </td>
-                      <td className="py-3">
-                        Serverless, zero cold-starts, sub-10ms reads. Single-table design (<code className="text-amber-300">USER#&lt;id&gt;</code> / <code className="text-amber-300">DOC#&lt;timestamp&gt;#&lt;docId&gt;</code>) provides chronological user scan histories with zero operational overhead.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
-                        <Database className="w-4 h-4 text-amber-400" />
-                        <span>Amazon S3</span>
-                      </td>
-                      <td className="py-3">
-                        Keeps multi-megabyte legal scans and PDFs out of DynamoDB. Secure presigned upload URLs allow direct browser uploads, preventing Lambda payload bottleneck.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 pr-4 font-bold text-white flex items-center space-x-1.5">
-                        <Server className="w-4 h-4 text-blue-400" />
-                        <span>AWS Lambda & SAM</span>
-                      </td>
-                      <td className="py-3">
-                        Decoupled functions (<code className="text-amber-300">analyze</code>, <code className="text-amber-300">history</code>) scale to zero with zero idle cost, managed entirely as code via AWS SAM.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950 py-6 text-center text-xs text-slate-500">
-        <p>Themis (न्याय सहायक) — Built for First Commit Hackathon (Bharat Builds Tour) | Ship It Track</p>
+      {/* Citizen Trust & Helplines Footer */}
+      <footer className="border-t border-stone-200 bg-white py-6 mt-12 text-stone-600 text-xs">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-stone-700">
+            <span className="flex items-center space-x-1.5 font-bold text-rose-800 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200">
+              <PhoneCall className="w-3.5 h-3.5 text-rose-700" />
+              <span>साइबर क्राइम हेल्पलाइन: डायल 1930 (cybercrime.gov.in)</span>
+            </span>
+            <span className="flex items-center space-x-1.5 font-medium text-stone-700 bg-stone-100 px-2.5 py-1 rounded-md border border-stone-200">
+              <span>राष्ट्रीय उपभोक्ता हेल्पलाइन: डायल 1915</span>
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setShowArchModal(true)}
+              className="text-stone-600 hover:text-stone-900 underline font-medium cursor-pointer flex items-center space-x-1"
+            >
+              <Server className="w-3.5 h-3.5" />
+              <span>AWS Cloud Architecture & Spec (For Evaluators)</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-4 pt-4 border-t border-stone-100 text-center text-stone-500">
+          <p>
+            Themis (न्याय सहायक) — Built for WeMakeDevs & AWS First Commit Hackathon (Ship It Track)
+          </p>
+          <p className="text-[11px] text-stone-400 mt-1">
+            Disclaimer: Themis is an AI heuristic assistance tool, not certified legal counsel. In case of legal dispute, consult an advocate.
+          </p>
+        </div>
       </footer>
+
+      {/* Architecture Modal for Judges / Developers */}
+      {showArchModal && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-stone-200 rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto p-6 shadow-xl space-y-6">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-4">
+              <div className="flex items-center space-x-2">
+                <Server className="w-5 h-5 text-amber-700" />
+                <h3 className="font-bold text-lg text-stone-900">Themis AWS Serverless Architecture & Stack</h3>
+              </div>
+              <button
+                onClick={() => setShowArchModal(false)}
+                className="text-stone-400 hover:text-stone-800 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs text-stone-700 leading-relaxed">
+              <p>
+                Themis is built 100% on serverless AWS primitives configured via AWS SAM (<code className="font-mono bg-stone-100 px-1 py-0.5 rounded">template.yaml</code>):
+              </p>
+
+              <table className="w-full border border-stone-200 text-left rounded-lg overflow-hidden">
+                <thead className="bg-stone-50 text-stone-900 font-bold border-b border-stone-200">
+                  <tr>
+                    <th className="p-2.5">AWS Service</th>
+                    <th className="p-2.5">Implementation Role</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-200">
+                  <tr>
+                    <td className="p-2.5 font-semibold text-stone-900">Amazon Textract</td>
+                    <td className="p-2.5">Extracts structured raw text from physical notices, seals, and summons with zero server overhead.</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-semibold text-stone-900">Amazon Polly (Neural)</td>
+                    <td className="p-2.5">Studio voice <code className="font-mono bg-stone-100 px-1 py-0.5 rounded text-amber-900">Kajal (Neural hi-IN & en-IN)</code> provides human-cadence audio narration.</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-semibold text-stone-900">Amazon Bedrock / Groq</td>
+                    <td className="p-2.5">Simplifies legal clauses into 5 citizen points, verifies statutory sections, and calculates scam probability.</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-semibold text-stone-900">Amazon DynamoDB</td>
+                    <td className="p-2.5">Single-table design (<code className="font-mono bg-stone-100 px-1 py-0.5 rounded">themis-documents</code>) with composite PK/SK and GSI1 for sub-10ms scans.</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-semibold text-stone-900">Amazon S3</td>
+                    <td className="p-2.5">Stores multi-megabyte document scans and PDFs with presigned upload URLs.</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-semibold text-stone-900">AWS Lambda & SAM</td>
+                    <td className="p-2.5">Node.js 22 serverless microservices (<code className="font-mono bg-stone-100 px-1 py-0.5 rounded">analyze</code>, <code className="font-mono bg-stone-100 px-1 py-0.5 rounded">history</code>) scaling to zero.</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div className="bg-stone-50 p-3.5 rounded-xl border border-stone-200">
+                <span className="font-bold text-stone-900 block mb-1">LocalStack & Production Parity:</span>
+                LocalStack emulates DynamoDB and S3 for completely offline testing, while Amazon Polly and Textract connect to live AWS Mumbai endpoints (<code className="font-mono bg-stone-100 px-1 py-0.5 rounded">ap-south-1</code>).
+              </div>
+            </div>
+
+            <div className="border-t border-stone-200 pt-4 text-right">
+              <button
+                onClick={() => setShowArchModal(false)}
+                className="px-4 py-2 bg-stone-900 text-white rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Close (बंद करें)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
