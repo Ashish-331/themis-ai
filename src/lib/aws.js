@@ -53,21 +53,17 @@ const pollyConfig = { region: 'ap-south-1' };
 if (isLocal) {
   textractConfig.endpoint = 'https://textract.ap-south-1.amazonaws.com';
   pollyConfig.endpoint = 'https://polly.ap-south-1.amazonaws.com';
-}
 
-if (realKey && realSecret && !realKey.startsWith('test')) {
-  bedrockConfig.credentials = {
-    accessKeyId: realKey,
-    secretAccessKey: realSecret
-  };
-  textractConfig.credentials = {
-    accessKeyId: realKey,
-    secretAccessKey: realSecret
-  };
-  pollyConfig.credentials = {
-    accessKeyId: realKey,
-    secretAccessKey: realSecret
-  };
+  if (realKey && realSecret && !realKey.startsWith('test')) {
+    const creds = {
+      accessKeyId: realKey,
+      secretAccessKey: realSecret,
+      ...(process.env.AWS_SESSION_TOKEN && { sessionToken: process.env.AWS_SESSION_TOKEN })
+    };
+    bedrockConfig.credentials = creds;
+    textractConfig.credentials = creds;
+    pollyConfig.credentials = creds;
+  }
 }
 
 const bedrockClient = new BedrockRuntimeClient(bedrockConfig);
