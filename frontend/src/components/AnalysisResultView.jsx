@@ -1,6 +1,7 @@
 import React from 'react';
 import { Volume2, VolumeX, RefreshCw, Clock, ArrowRight } from 'lucide-react';
 import ScamAlertBanner from './ScamAlertBanner';
+import { TRANSLATIONS } from '../data/translations';
 
 export default function AnalysisResultView({
   analysisResult,
@@ -12,6 +13,7 @@ export default function AnalysisResultView({
   language
 }) {
   if (!analysisResult) return null;
+  const safeT = t || TRANSLATIONS.english;
   const isHindi = language === 'hindi';
 
   return (
@@ -54,12 +56,12 @@ export default function AnalysisResultView({
             )}
             <span>
               {isSynthesizingSpeech
-                ? t.generatingAudio
+                ? safeT.generatingAudio
                 : isSpeaking
-                ? t.pauseAudio
+                ? safeT.pauseAudio
                 : hasCachedAudio
-                ? t.replayAudio
-                : t.listenAudio}
+                ? safeT.replayAudio
+                : safeT.listenAudio}
             </span>
           </button>
         </div>
@@ -70,7 +72,7 @@ export default function AnalysisResultView({
         isScam={analysisResult.isScam}
         scamReason={analysisResult.scamReason}
         confidence={analysisResult.confidence}
-        t={t}
+        t={safeT}
         language={language}
       />
 
@@ -79,7 +81,7 @@ export default function AnalysisResultView({
         <div className="bg-amber-50/80 border border-amber-300/90 border-l-[5px] border-l-amber-500 p-4 rounded-xl flex items-start space-x-3 text-amber-950">
           <Clock className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
           <div className="text-xs sm:text-sm leading-relaxed">
-            <span className="font-bold">{t.statutoryTimeline}: </span>
+            <span className="font-bold">{safeT.statutoryTimeline}: </span>
             <span className={isHindi ? 'font-hindi' : 'font-sans'}>{analysisResult.urgency}</span>
           </div>
         </div>
@@ -88,7 +90,7 @@ export default function AnalysisResultView({
       {/* 5-Point Simplified Breakdown */}
       <div className="premium-card p-6 rounded-2xl">
         <h4 className="text-base font-display sm:text-lg text-stone-900 mb-4 tracking-tight">
-          {t.summaryTitle}
+          {safeT.summaryTitle}
         </h4>
 
         <ul className="space-y-3.5">
@@ -108,7 +110,7 @@ export default function AnalysisResultView({
       {/* Recommended Next Steps */}
       <div className="premium-card p-6 rounded-2xl">
         <h4 className="text-base font-display sm:text-lg text-stone-900 mb-4 tracking-tight">
-          {t.nextStepsTitle}
+          {safeT.nextStepsTitle}
         </h4>
 
         <div className="space-y-2.5">
@@ -126,7 +128,7 @@ export default function AnalysisResultView({
 
       {/* Legal Disclaimer */}
       <p className="text-[11px] text-stone-400 italic text-center px-4 leading-normal">
-        * {analysisResult.disclaimer || t.disclaimer}
+        * {analysisResult.disclaimer || safeT.disclaimer}
       </p>
     </div>
   );

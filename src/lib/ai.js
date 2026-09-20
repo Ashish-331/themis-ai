@@ -33,7 +33,7 @@ function parseRobustJson(text) {
 }
 
 function buildPrompt(extractedText, language) {
-  const langName = LANGUAGE_NAMES[language] || LANGUAGE_NAMES.bengali;
+  const langName = LANGUAGE_NAMES[language] || LANGUAGE_NAMES.english;
   return `You are Themis (न्याय सहायक), an expert Indian legal assistant.
 Analyze this document text extracted from an Indian legal notice, deed, contract, assignment, or letter:
 """

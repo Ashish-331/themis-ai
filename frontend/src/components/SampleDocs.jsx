@@ -1,7 +1,9 @@
 import React from 'react';
 import { ArrowRight, FileCheck } from 'lucide-react';
+import { TRANSLATIONS } from '../data/translations';
 
 export default function SampleDocs({ sampleDocs, onSelectSample, language, t }) {
+  const safeT = t || TRANSLATIONS[language] || TRANSLATIONS.english;
   const isHindi = language === 'hindi';
 
   return (
@@ -9,10 +11,10 @@ export default function SampleDocs({ sampleDocs, onSelectSample, language, t }) 
       <div className="flex items-center justify-between mb-3.5">
         <span className="text-xs font-bold tracking-tight text-stone-800 flex items-center space-x-1.5">
           <FileCheck className="w-3.5 h-3.5 text-amber-700" />
-          <span>{t.sampleTitle}</span>
+          <span>{safeT.sampleTitle}</span>
         </span>
         <span className="text-[10px] text-amber-800 bg-amber-50/80 px-2 py-0.5 rounded-full border border-amber-200/80 font-medium">
-          {t.sampleBadge}
+          {safeT.sampleBadge}
         </span>
       </div>
 

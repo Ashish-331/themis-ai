@@ -1,5 +1,6 @@
 import React from 'react';
 import { Camera, FileText, CheckCircle2, X, RefreshCw, ArrowRight, UploadCloud } from 'lucide-react';
+import { TRANSLATIONS } from '../data/translations';
 
 export default function UploadZone({
   selectedFile,
@@ -15,18 +16,19 @@ export default function UploadZone({
   isAnalyzing,
   t
 }) {
+  const safeT = t || TRANSLATIONS.english;
   return (
     <div className="premium-card rounded-2xl p-6">
       <div className="flex items-center justify-between mb-1.5">
         <h3 className="font-bold text-stone-900 text-sm tracking-tight">
-          {t.uploadTitle}
+          {safeT.uploadTitle}
         </h3>
         <span className="text-[10px] uppercase font-mono tracking-wider text-stone-400 bg-stone-100 px-2 py-0.5 rounded">
           OCR & AI
         </span>
       </div>
       <p className="text-xs text-stone-500 mb-4 leading-relaxed">
-        {t.uploadDesc}
+        {safeT.uploadDesc}
       </p>
 
       {/* Interactive Dropzone */}
@@ -53,10 +55,10 @@ export default function UploadZone({
           <UploadCloud className="w-6 h-6" />
         </div>
         <span className="text-xs font-bold text-stone-800 text-center tracking-tight">
-          {isDragging ? t.dragDropActive : t.dragDropText}
+          {isDragging ? safeT.dragDropActive : safeT.dragDropText}
         </span>
         <span className="text-[11px] text-stone-400 mt-1 font-mono">
-          {t.supportedFormats}
+          {safeT.supportedFormats}
         </span>
       </div>
 
@@ -80,7 +82,7 @@ export default function UploadZone({
               <p className="text-xs font-bold text-stone-900 truncate tracking-tight">{selectedFile.name}</p>
               <p className="text-[11px] text-stone-500 flex items-center space-x-1 mt-0.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{t.readyToAnalyze}</span>
+                <span>{safeT.readyToAnalyze}</span>
               </p>
             </div>
           </div>
@@ -110,12 +112,12 @@ export default function UploadZone({
         {isAnalyzing ? (
           <>
             <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
-            <span>{t.analyzingBtn}</span>
+            <span>{safeT.analyzingBtn}</span>
           </>
         ) : (
           <>
             <ArrowRight className="w-4 h-4 text-amber-400" />
-            <span>{t.btnAnalyze}</span>
+            <span>{safeT.btnAnalyze}</span>
           </>
         )}
       </button>

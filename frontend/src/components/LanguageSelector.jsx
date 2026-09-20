@@ -1,21 +1,23 @@
 import React from 'react';
 import { Languages, Check } from 'lucide-react';
+import { TRANSLATIONS } from '../data/translations';
 
 const LANGUAGES = [
   { id: 'english', label: 'English', sub: 'Standard Indian Legal Drafting', native: 'English' },
   { id: 'hindi', label: 'हिन्दी', sub: 'सरल नागरिक भाषा (देवनागरी)', native: 'Hindi' }
 ];
 
-export default function LanguageSelector({ language, setLanguage, t }) {
+export default function LanguageSelector({ language = 'english', setLanguage, t }) {
+  const safeT = t || TRANSLATIONS[language] || TRANSLATIONS.english;
   return (
     <div className="premium-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h2 className="text-sm font-bold text-stone-900 flex items-center space-x-2 tracking-tight">
           <Languages className="w-4 h-4 text-amber-600" />
-          <span>{t.targetLangLabel}</span>
+          <span>{safeT.targetLangLabel}</span>
         </h2>
         <p className="text-xs text-stone-500 mt-0.5">
-          {t.targetLangDesc}
+          {safeT.targetLangDesc}
         </p>
       </div>
 

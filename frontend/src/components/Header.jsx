@@ -1,7 +1,9 @@
 import React from 'react';
-import { Scale, FileText, History, Globe } from 'lucide-react';
+import { Scale, FileText, History } from 'lucide-react';
+import { TRANSLATIONS } from '../data/translations';
 
-export default function Header({ activeTab, setActiveTab, language, setLanguage, t }) {
+export default function Header({ activeTab, setActiveTab, language = 'english', setLanguage, t }) {
+  const safeT = t || TRANSLATIONS[language] || TRANSLATIONS.english;
   return (
     <header className="border-b border-[#ECE7DE] bg-white/95 backdrop-blur-md sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
@@ -13,14 +15,14 @@ export default function Header({ activeTab, setActiveTab, language, setLanguage,
           <div>
             <div className="flex items-center space-x-2">
               <span className="font-extrabold text-xl tracking-tight text-stone-900 font-sans">
-                {t.brandName}
+                {safeT.brandName}
               </span>
               <span className="px-2 py-0.5 text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-200/80 rounded-full">
-                {t.brandBadge}
+                {safeT.brandBadge}
               </span>
             </div>
             <p className="text-[11px] text-stone-500 font-medium hidden sm:block tracking-tight">
-              {t.brandTagline}
+              {safeT.brandTagline}
             </p>
           </div>
         </div>
@@ -38,7 +40,7 @@ export default function Header({ activeTab, setActiveTab, language, setLanguage,
               }`}
             >
               <FileText className="w-3.5 h-3.5 text-amber-700" />
-              <span>{t.tabAnalyze}</span>
+              <span>{safeT.tabAnalyze}</span>
             </button>
             <button
               onClick={() => setActiveTab('history')}
@@ -49,7 +51,7 @@ export default function Header({ activeTab, setActiveTab, language, setLanguage,
               }`}
             >
               <History className="w-3.5 h-3.5 text-amber-700" />
-              <span>{t.tabHistory}</span>
+              <span>{safeT.tabHistory}</span>
             </button>
           </nav>
 

@@ -1,18 +1,20 @@
 import React from 'react';
 import { AlertTriangle, ShieldCheck } from 'lucide-react';
+import { TRANSLATIONS } from '../data/translations';
 
 export default function ScamAlertBanner({ isScam, scamReason, confidence, t, language }) {
+  const safeT = t || TRANSLATIONS.english;
   const isHindi = language === 'hindi';
   const val = confidence || 0.85;
 
-  let confLabel = t.confHigh;
+  let confLabel = safeT.confHigh;
   let confColor = 'text-stone-900 bg-stone-100 border-stone-300/80';
 
   if (val < 0.65) {
-    confLabel = t.confLow;
+    confLabel = safeT.confLow;
     confColor = 'text-rose-800 bg-rose-50 border-rose-200';
   } else if (val < 0.85) {
-    confLabel = t.confModerate;
+    confLabel = safeT.confModerate;
     confColor = 'text-amber-800 bg-amber-50 border-amber-200';
   }
 
@@ -35,12 +37,12 @@ export default function ScamAlertBanner({ isScam, scamReason, confidence, t, lan
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h4 className="font-bold text-base sm:text-lg tracking-tight">
-            {isScam ? t.scamTitle : t.legitTitle}
+            {isScam ? safeT.scamTitle : safeT.legitTitle}
           </h4>
 
           {/* Qualitative Confidence Pill */}
           <span className={`text-[11px] px-2.5 py-0.5 rounded-full border font-semibold tracking-tight ${confColor}`}>
-            {t.confidenceLabel}: {confLabel}
+            {safeT.confidenceLabel}: {confLabel}
           </span>
         </div>
 

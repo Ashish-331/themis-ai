@@ -1,7 +1,9 @@
 import React from 'react';
 import { Server, X } from 'lucide-react';
+import { TRANSLATIONS } from '../data/translations';
 
-export default function ArchitectureModal({ isOpen, onClose }) {
+export default function ArchitectureModal({ isOpen, onClose, t }) {
+  const safeT = t || TRANSLATIONS.english;
   if (!isOpen) return null;
 
   return (
@@ -71,7 +73,7 @@ export default function ArchitectureModal({ isOpen, onClose }) {
             onClick={onClose}
             className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors"
           >
-            {t.closeModal}
+            {safeT.closeModal}
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 export const TRANSLATIONS = {
-  en: {
+  english: {
     brandName: 'THEMIS',
     brandBadge: 'Legal Intelligence',
     brandTagline: 'AI Legal Simplifier & Cyber Scam Detection',
@@ -75,7 +75,7 @@ export const TRANSLATIONS = {
     builtFor: 'Themis (न्याय सहायक) — Built for WeMakeDevs & AWS First Commit Hackathon',
     closeModal: 'Close'
   },
-  hi: {
+  hindi: {
     brandName: 'THEMIS',
     brandBadge: 'न्याय सहायक',
     brandTagline: 'नागरिक कानूनी दस्तावेज़ विश्लेषक व साइबर फ्रॉड जांच',
@@ -152,3 +152,7 @@ export const TRANSLATIONS = {
     closeModal: 'बंद करें'
   }
 };
+
+TRANSLATIONS.en = TRANSLATIONS.english;
+TRANSLATIONS.hi = TRANSLATIONS.hindi;
+
