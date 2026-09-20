@@ -15,7 +15,7 @@ import Footer from './components/Footer';
 import { SAMPLE_DOCS } from './data/sampleDocs';
 import { TRANSLATIONS } from './data/translations';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('analyze'); // 'analyze' | 'history'
