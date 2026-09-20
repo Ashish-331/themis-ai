@@ -2,9 +2,8 @@ const { BedrockRuntimeClient, ConverseCommand } = require('@aws-sdk/client-bedro
 const { bedrockClient } = require('./aws');
 
 const LANGUAGE_NAMES = {
-  bengali: 'Bengali (বাংলা)',
-  hindi: 'Hindi (हिंदी)',
-  marathi: 'Marathi (मराठी)'
+  english: 'English',
+  hindi: 'Hindi (हिंदी)'
 };
 
 function parseRobustJson(text) {

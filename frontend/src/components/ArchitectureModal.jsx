@@ -71,7 +71,7 @@ export default function ArchitectureModal({ isOpen, onClose }) {
             onClick={onClose}
             className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors"
           >
-            बंद करें
+            {t.closeModal}
           </button>
         </div>
       </div>

@@ -17,11 +17,9 @@ const corsHeaders = {
 };
 
 // Intelligent Indian Legal NLP Analyzer based on AWS Textract extracted text
-function analyzeExtractedLegalText(rawText, language = 'bengali') {
+function analyzeExtractedLegalText(rawText, language = 'english') {
   const textLower = rawText.toLowerCase();
-  const lang = ['marathi', 'hindi', 'bengali'].includes(language.toLowerCase()) 
-    ? language.toLowerCase() 
-    : 'bengali';
+  const lang = (language || 'english').toLowerCase() === 'hindi' ? 'hindi' : 'english';
 
   // Check 1: Raksha Bandhan / Family Parody Notice
   if (
@@ -32,26 +30,7 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
     textLower.includes('salty') || 
     textLower.includes('shagun')
   ) {
-    if (lang === 'bengali') {
-      return {
-        summary: [
-          "এটি একটি ব্যঙ্গাত্মক বা রসিকতামূলক আইনি নোটিশ (Parody Notice), যা কাল্পনিক 'Personal Emotional Damages Act, 2025'-এর অধীনে পাঠানো হয়েছে।",
-          "নোটিশটি প্রাপক (শ্রী সাই কুমার রেড্ডি)-কে তাঁর বোনের ('The Aggrieved Party') পক্ষ থেকে পাঠানো হয়েছে।",
-          "প্রধান অভিযোগ: রাখীবন্ধনে মেয়াদের কাছাকাছি থাকা নিম্নমানের বা সস্তা চকোলেট উপহার দেওয়া।",
-          "অন্যান্য অভিযোগ: 'শগুন' হিসেবে দুমড়ানো-মুচড়ানো পুরনো টাকার নোট দেওয়া এবং ফ্রিজের বাসি মিষ্টি দেওয়া।",
-          "প্রতি বছর 'পরের সপ্তাহে নিশ্চিত কিছু দেব' এই মিথ্যা প্রতিশ্রুতি দিয়ে দায়িত্ব এড়িয়ে যাওয়া।"
-        ],
-        isScam: true,
-        confidence: 0.99,
-        scamReason: "নকল/পরিহাসমূলক নোটিশ: ভারতে 'Personal Emotional Damages Act' নামে কোনো আইন নেই এবং স্ট্যাম্প পেপারের উপরে 'SALTY' ও 'ONE RUPEE' লেখা রয়েছে। এটি কোনো আদালতের আইনি সমন নয়, বরং ভাইবোনের মধ্যকার নিখাদ রসিকতা।",
-        urgency: "কোনো আইনি জরুরী নয় (No Legal Urgency) — তবে পারিবারিক শান্তি বজায় রাখতে অবিলম্বে বোনকে ভালো মানের চকোলেট বা উপহার দেওয়া শ্রেয়!",
-        nextSteps: [
-          "কোনো আইনজীবী বা পুলিশের কাছে যাওয়ার কোনো প্রয়োজন নেই।",
-          "বোনকে অবিলম্বে পছন্দের ভালো মানের আসল উপহার বা চকোলেট কিনে দিন।",
-          "পরের রাখীবন্ধনে টাটকা মিষ্টি ও সন্তোষজনক শগুন উপহার দেওয়ার প্রস্তুতি রাখুন।"
-        ]
-      };
-    } else if (lang === 'hindi') {
+    if (lang === 'hindi') {
       return {
         summary: [
           "यह एक व्यंग्यात्मक व मजाकिया लीगल नोटिस (Parody Notice) है, जिसे काल्पनिक 'Personal Emotional Damages Act, 2025' के तहत भेजा गया है।",
@@ -73,20 +52,20 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
     } else {
       return {
         summary: [
-          "ही एक निव्वळ गंमत/मस्करीसाठी पाठवलेली बनावट कायदेशीर नोटीस (Parody Notice) आहे, ज्यामध्ये 'Personal Emotional Damages Act, 2025' चा उल्लेख केला आहे.",
-          "ही नोटीस बहिणीने तिचा भाऊ साई कुमार रेड्डी याच्याविरुद्ध रक्षाबंधनाची कर्तव्ये न पाळल्याबद्दल काढली आहे.",
-          "आरोप १: मुदत संपत आलेल्या निकृष्ट दर्जाच्या चॉकलेट्स भेट देणे.",
-          "आरोप २: 'शगुन' म्हणून चुरगाळलेल्या नोटा देणे आणि फ्रीजमधील उरलेली मिठाई देणे.",
-          "आरोप ३: दरवर्षी 'पुढच्या आठवड्यात नक्की काहीतरी देईन' असे खोटे आश्वासन देणे."
+          "Humorous parody notice drafted under a fictional 'Personal Emotional Damages Act, 2025'.",
+          "Issued by an aggrieved sister to her brother (Mr. Sai Kumar Reddy) for alleged festive breaches.",
+          "Allegation 1: Gifting near-expiry substandard chocolates instead of premium festive gifts.",
+          "Allegation 2: Offering crumpled currency notes as festive 'shagun' and stale leftover sweets.",
+          "Repeated false assurances promising 'something definite next week'."
         ],
         isScam: true,
         confidence: 0.99,
-        scamReason: "बनावट/मस्करीची नोटीस: ही एक कौटुंबिक मस्करी आहे. भारतीय कायद्यात 'Personal Emotional Damages Act' असा कोणताही कायदा अस्तित्वात नाही. स्टॅम्पवर 'SALTY' आणि 'ONE RUPEE' असे नमूद केले आहे.",
-        urgency: "कोणतीही कायदेशीर निकड नाही (No Legal Urgency) — फक्त बहिणीला चांगली भेटवस्तू देऊन तिची नाराजी दूर करा!",
+        scamReason: "Parody Document: The 'Personal Emotional Damages Act' does not exist in Indian law, and the stamp paper is visibly marked 'SALTY' and 'ONE RUPEE'. This is sibling humor, not a legitimate court notice.",
+        urgency: "No Legal Urgency — maintain family harmony by presenting genuine premium chocolates!",
         nextSteps: [
-          "कोणत्याही वकिलाकडे जाण्याची किंवा घाबरण्याची गरज नाही.",
-          "बहिणीला ताबडतोब चांगले कॅडबरी चॉकलेट किंवा गिफ्ट खरेदी करून द्या.",
-          "पुढच्या वर्षी रक्षाबंधनाला वेळेवर चांगला शगुन द्या."
+          "No need to consult an advocate or police.",
+          "Purchase genuine premium chocolates or a thoughtful gift immediately.",
+          "Prepare an acceptable festive gift well in advance next year."
         ]
       };
     }
@@ -94,26 +73,7 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
 
   // Check 2: Cheque Bounce Notice (Section 138 NI Act)
   if (textLower.includes('138') || textLower.includes('negotiable instruments') || textLower.includes('cheque') || textLower.includes('dishonour')) {
-    if (lang === 'bengali') {
-      return {
-        summary: [
-          "এটি নেগোশিয়েবল ইনস্ট্রুমেন্টস অ্যাক্ট, ১৮৮১-এর ধারা ১৩৮-এর অধীনে প্রেরিত একটি আনুষ্ঠানিক চেক বাউন্স সংক্রান্ত আইনি নোটিশ।",
-          "ব্যাংক অ্যাকাউন্টে পর্যাপ্ত তহবিল না থাকার কারণে প্রেরিত চেকটি প্রত্যাখ্যাত (Dishonoured) হয়েছে।",
-          "চেকের উল্লেখিত সম্পূর্ণ অর্থ অবিলম্বে পরিশোধ করার জন্য আইনি দাবি জানানো হয়েছে।",
-          "নোটিশ প্রাপ্তির তারিখ থেকে ১৫ দিনের মধ্যে অর্থ পরিশোধ না করলে ফৌজদারি মামলা দায়েরের সতর্কতা দেওয়া হয়েছে।",
-          "ধারা ১৩৮ অনুযায়ী দোষী সাব্যস্ত হলে সর্বোচ্চ ২ বছর পর্যন্ত কারাদণ্ড অথবা চেকের দ্বিগুণ পরিমাণ জরিমানা হতে পারে।"
-        ],
-        isScam: false,
-        confidence: 0.94,
-        scamReason: "নথিটি ভারতীয় আদালতের ধারা ১৩৮-এর আদর্শ আইনি বিন্যাস অনুসরণ করে। এটি একটি বৈধ ও অতি গুরুত্বপূর্ণ আইনি নোটিশ।",
-        urgency: "১৫ দিনের বাধ্যতামূলক সময়সীমা (Strict 15-Day Statutory Notice Period)। অবিলম্বে আইনজীবী পরামর্শ আবশ্যক।",
-        nextSteps: [
-          "ব্যাংকের রিটার্ন মেমো এবং চেকের তথ্যাদি মিলিয়ে যাচাই করুন।",
-          "১৫ দিনের মধ্যে নোটিশের উপযুক্ত জবাব পাঠানোর জন্য আইনজীবীর সাথে পরামর্শ করুন।",
-          "সম্ভব হলে বাদীর সাথে আলোচনা করে পাওনা অর্থ নিষ্পত্তি করুন।"
-        ]
-      };
-    } else if (lang === 'hindi') {
+    if (lang === 'hindi') {
       return {
         summary: [
           "यह परक्राम्य लिखत अधिनियम (Negotiable Instruments Act, 1881) की धारा 138 के तहत चेक बाउंस का लीगल नोटिस है।",
@@ -135,20 +95,20 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
     } else {
       return {
         summary: [
-          "ही निगोशिएबल इन्स्ट्रुमेंट्स ॲक्ट, १८८१ च्या कलम १३८ अन्वये पाठवलेली चेक बाऊन्सची कायदेशीर नोटीस आहे.",
-          "खात्यात पुरेशी रक्कम नसल्यामुळे बँक खात्यातून चेक न वटता परत आला आहे.",
-          "चेकची संपूर्ण रक्कम तातडीने देण्याची कायदेशीर मागणी करण्यात आली आहे.",
-          "नोटीस मिळाल्यापासून १५ दिवसांच्या आत रक्कम न भरल्यास न्यायालयात फौजदारी खटला दाखल करण्याचा इशारा दिला आहे.",
-          "कलम १३८ अंतर्गत २ वर्षांपर्यंत तुरुंगवास किंवा चेकच्या रकमेच्या दुप्पट दंडाची तरतूद आहे."
+          "Formal statutory notice under Section 138 of the Negotiable Instruments Act, 1881 for cheque dishonour.",
+          "The bank returned the cheque unpaid citing 'Insufficient Funds' or related bank return memo reasons.",
+          "Formal demand demanding immediate settlement of the full cheque amount.",
+          "Mandatory 15-day statutory cure period from receipt to settle dues before criminal prosecution.",
+          "Failure to pay exposes the drawer to criminal penalties up to 2 years imprisonment or twice the cheque amount."
         ],
         isScam: false,
         confidence: 0.94,
-        scamReason: "हे कायदेशीर दस्तऐवज वैध असून कलम १३८ च्या सर्व निकषांनुसार तयार केलेले आहे.",
-        urgency: "१५ दिवसांची अंतिम मुदत. तात्काळ वकिलांशी संपर्क साधावा.",
+        scamReason: "Authentic statutory demand notice conforming to standard Indian legal notice conventions under Section 138 NI Act.",
+        urgency: "Strict 15-day statutory limitation window from notice receipt. Immediate advocate consultation required.",
         nextSteps: [
-          "बँक मेमो आणि चेक क्रमांकाची पडताळणी करा.",
-          "१५ दिवसांच्या आत अधिकृत उत्तर देण्यासाठी वकिलाचा सल्ला घ्या.",
-          "न्यायालयीन कारवाई टाळण्यासाठी तडजोडीचा प्रयत्न करा."
+          "Verify the bank return memo against the cheque number and account records.",
+          "Engage a legal advocate within 15 days to serve a formal written response.",
+          "Explore an amicable commercial settlement before criminal proceedings are initiated."
         ]
       };
     }
@@ -159,26 +119,7 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
     /\b(rent agreement|rental|lease|tenant|tenancy|landlord|licensor|licensee)\b/i.test(rawText) ||
     (/\brent\b/i.test(rawText) && /\b(premises|deposit|flat|apartment|house|monthly|maintenance)\b/i.test(rawText))
   ) {
-    if (lang === 'bengali') {
-      return {
-        summary: [
-          "এটি একটি স্ট্যান্ডার্ড ১১ মাসের আবাসিক/বাণিজ্যিক বাড়ি ভাড়ার চুক্তিপত্র (Rent Agreement)।",
-          "চুক্তিতে মাসিক ভাড়া এবং প্রতি মাসের নির্দিষ্ট তারিখের মধ্যে পরিশোধের সময়সীমা নির্ধারিত আছে।",
-          "নিরাপত্তা জামানত (Security Deposit) হিসেবে অগ্রিম অর্থের উল্লেখ রয়েছে।",
-          "বাড়ি ছাড়ার পূর্বে ১ মাসের লিখিত নোটিশ (Notice Period) প্রদান বাধ্যতামূলক।",
-          "বাড়ি ছাড়ার সময় ক্ষয়ক্ষতি বা রঙের খরচ সিকিউরিটি ডিপোজিট থেকে সমন্বয়ের শর্ত প্রযোজ্য।"
-        ],
-        isScam: false,
-        confidence: 0.92,
-        scamReason: "নথিটি ভারতীয় বাড়ি ভাড়া ও লিভ-অ্যান্ড-লাইসেন্স চুক্তির প্রচলিত আইনসম্মত মানদণ্ডে রচিত।",
-        urgency: "চুক্তি স্বাক্ষরের ৭ দিনের মধ্যে উভয় পক্ষের উপস্থিতিতে নিবন্ধন (Registration) সম্পন্ন করুন।",
-        nextSteps: [
-          "নিকটবর্তী থানায় ভাড়াটিয়া ভেরিফিকেশন (Police Verification) জমা দিন।",
-          "সাব-রেজিস্ট্রার অফিসে গিয়ে চুক্তিপত্রের আইনি নিবন্ধন নিশ্চিত করুন।",
-          "সিকিউরিটি ডিপোজিটের আনুষ্ঠানিক রসিদ সংগ্রহ করুন।"
-        ]
-      };
-    } else if (lang === 'hindi') {
+    if (lang === 'hindi') {
       return {
         summary: [
           "यह 11 महीने का आवासीय/व्यावसायिक किराया अनुबंध (Rent Agreement) है।",
@@ -200,20 +141,20 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
     } else {
       return {
         summary: [
-          "हा ११ महिन्यांचा निवासी/व्यावसायिक भाडे करार (Rent Agreement) आहे.",
-          "दरमहा ठराविक तारखेला भाडे देण्याची अट करारात नमूद केली आहे.",
-          "सुरक्षा अनामत रक्कम (Security Deposit) करारात नमूद केलेली आहे.",
-          "जागा रिकामी करण्यापूर्वी १ महिन्याची पूर्वसूचना (Notice Period) देणे बंधनकारक आहे.",
-          "जागा सोडताना रंगरंगोटीचा खर्च अनामत रकमेतून कापण्याची तरतूद आहे."
+          "Standard 11-month residential or commercial Leave & License / Rental Agreement.",
+          "Stipulates monthly rent and fixed due date for recurring payments.",
+          "Outlines interest-free refundable security deposit terms and deductions.",
+          "Mandates a 1-month mutual written notice period prior to tenancy termination.",
+          "Outlines repainting, maintenance, and structural repair obligations upon vacation."
         ],
         isScam: false,
         confidence: 0.92,
-        scamReason: "हा दस्तऐवज कायदेशीर व प्रमाणित भाडे कराराच्या नियमांनुसार आहे.",
-        urgency: "७ दिवसांच्या आत कराराची अधिकृत नोंदणी पूर्ण करा.",
+        scamReason: "Legitimate standard tenancy agreement compliant with Indian model tenancy and contract norms.",
+        urgency: "Complete bilateral execution and registered verification within 7 days of occupancy.",
         nextSteps: [
-          "स्थानिक पोलीस ठाण्यात भाडेकरू पडताळणी पूर्ण करा.",
-          "सब-रजिस्ट्रार कार्यालयात जाऊन नोंदणीकृत भाडे करार करून घ्या.",
-          "अनामत रक्कमेची मूळ पावती घरमालकाकडून घ्या."
+          "File tenant verification with the local police station jurisdiction.",
+          "Register the agreement at the Sub-Registrar Office or authorized digital portal.",
+          "Retain signed original rent receipts and security deposit acknowledgment."
         ]
       };
     }
@@ -221,26 +162,7 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
 
   // Check 4: Court Summons / Legal Notice
   if (textLower.includes('court') || textLower.includes('summons') || textLower.includes('advocate') || textLower.includes('suit') || textLower.includes('judge')) {
-    if (lang === 'bengali') {
-      return {
-        summary: [
-          "এটি একটি আদালত কর্তৃক প্রেরিত সমন অথবা আইনজীবীর মাধ্যমে পাঠানো আনুষ্ঠানিক আইনি নোটিশ।",
-          "প্রাপকের বিরুদ্ধে আদালতে দায়েরকৃত মামলার বিবরণ ও কারণ দর্শানোর নির্দেশ দেওয়া হয়েছে।",
-          "নির্দিষ্ট তারিখ ও সময়ে আদালতে সশরীরে বা আইনজীবীর মাধ্যমে উপস্থিতির তলব রয়েছে।",
-          "নির্ধারিত তারিখে হাজির না হলে একতরফা (Ex-parte) রায় ঘোষণার সতর্কতা রয়েছে।",
-          "বাদীপক্ষের অভিযোগের বিপরীতে লিখিত জবাব (Written Statement) দাখিল করার নির্দেশ রয়েছে।"
-        ],
-        isScam: false,
-        confidence: 0.91,
-        scamReason: "নথিটিতে আদালতের নাম, মামলা নম্বর এবং আইনি ভাষা যথাযথভাবে ব্যবহৃত হয়েছে।",
-        urgency: "আদালতে হাজিরার নির্ধারিত তারিখের পূর্বেই আইনজীবীর মাধ্যমে প্রস্তুতি নিন।",
-        nextSteps: [
-          "আদালতের মামলার নম্বর ও তারিখ যাচাই করুন।",
-          "তাৎক্ষণিকভাবে একজন অভিজ্ঞ আইনজীবীর সাথে যোগাযোগ করে ওকালতনামা দিন।",
-          "অভিযোগের বিরুদ্ধে প্রয়োজনীয় প্রমাণ ও জবাব প্রস্তুত করুন।"
-        ]
-      };
-    } else if (lang === 'hindi') {
+    if (lang === 'hindi') {
       return {
         summary: [
           "यह अदालत द्वारा जारी समन या किसी वकील द्वारा भेजा गया आधिकारिक कानूनी नोटिस है।",
@@ -262,20 +184,20 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
     } else {
       return {
         summary: [
-          "हे न्यायालयाचे समन्स किंवा वकिलामार्फत पाठवलेली अधिकृत कायदेशीर नोटीस आहे.",
-          "दाखल केलेल्या खटल्याची माहिती आणि आरोपांचे स्पष्टीकरण मागितले आहे.",
-          "ठराविक तारखेला न्यायालयात हजर राहण्याचे निर्देश देण्यात आले आहेत.",
-          "हजर न राहिल्यास न्यायालय एकतर्फी (Ex-parte) निर्णय देण्याचा इशारा आहे.",
-          "आरोपांविरुद्ध लेखी म्हणणे (Written Statement) सादर करण्याचे निर्देश आहेत."
+          "Official judicial summons or formal advocate legal demand notice.",
+          "Outlines civil or criminal proceedings requiring formal appearance or written reply.",
+          "Specifies date and bench for appearance before the designated court or tribunal.",
+          "Warns that non-appearance may lead to an adverse ex-parte order or warrant.",
+          "Requires filing a formal Written Statement (WS) with supporting evidentiary exhibits."
         ],
         isScam: false,
         confidence: 0.91,
-        scamReason: "दस्तऐवजात न्यायालयाचा शिक्का, केस नंबर आणि अधिकृत भाषेचा योग्य वापर आहे.",
-        urgency: "न्यायालयातील तारखेपूर्वी तातडीने वकिलांचा सल्ला घ्यावा.",
+        scamReason: "Legitimate legal instrument containing court jurisdiction, case number, and formal legal drafting.",
+        urgency: "Strict court appearance or statutory reply timeline. Immediate advocate engagement recommended.",
         nextSteps: [
-          "केस नंबर आणि न्यायालयाचे तपशील तपासा.",
-          "तात्काळ अनुभवी वकिलांची भेट घेऊन वकालतनामा दाखल करा.",
-          "लेखी उत्तरासाठी पुरावे गोळा करा."
+          "Authenticate the case title, court bench, and hearing date on eCourts portal.",
+          "Engage an advocate to execute a Vakalatnama and draft a formal reply.",
+          "Compile all documentary evidence relevant to the pleaded allegations."
         ]
       };
     }
@@ -283,26 +205,7 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
 
   // Check 5: Digital Arrest / Cyber Fraud / Fake Police Threat
   if (textLower.includes('digital arrest') || textLower.includes('fedex') || textLower.includes('customs') || textLower.includes('narcotics') || textLower.includes('cbi') || textLower.includes('skype')) {
-    if (lang === 'bengali') {
-      return {
-        summary: [
-          "সতর্কতা: এটি একটি সম্পূর্ণ ভুয়া প্রতারণামূলক চিঠি (Cyber Crime / Digital Arrest Scam)।",
-          "চিঠিতে ফেডেক্স পার্সেল, মাদক বা সিবিআই-এর ভুয়া ভয় দেখিয়ে অর্থ দাবির ফাঁদ পাতা হয়েছে।",
-          "ভারতীয় আইনে 'Digital Arrest' বা ভিডিও কলের মাধ্যমে গ্রেপ্তারের কোনো অস্তিত্ব নেই।",
-          "প্রতারক চক্র ব্যাঙ্ক অ্যাকাউন্ট নম্বর বা ইউপিআই-এর মাধ্যমে অর্থ প্রেরণের চাপ সৃষ্টি করছে।",
-          "কোনো অবস্থাতেই কোনো অর্থ পাঠাবেন না বা আতঙ্কিত হবেন না।"
-        ],
-        isScam: true,
-        confidence: 0.99,
-        scamReason: "মারাত্মক সাইবার প্রতারণা: কোনো পুলিশ, আদালত বা সিবিআই অনলাইন ভিডিও কলে 'ডিজিটাল অ্যারেস্ট' করে না বা ব্যক্তিগত অ্যাকাউন্টে টাকা চায় না।",
-        urgency: "কোনো টাকা দেবেন না! অবিলম্বে ১৯৩০ নম্বরে ন্যাশনাল সাইবার ক্রাইম পোর্টালে অভিযোগ করুন।",
-        nextSteps: [
-          "তাৎক্ষণিকভাবে ১৯৩০ নম্বরে ফোন করে প্রতারণার অভিযোগ নথিভুক্ত করুন।",
-          "www.cybercrime.gov.in পোর্টালে স্ক্রিনশটসহ রিপোর্ট করুন।",
-          "প্রতারকদের ফোন বা মেসেজ ব্লক করুন এবং কোনো অর্থ প্রদান করবেন না।"
-        ]
-      };
-    } else if (lang === 'hindi') {
+    if (lang === 'hindi') {
       return {
         summary: [
           "सावधान: यह पूरी तरह से फर्जी साइबर धोखाधड़ी (Digital Arrest Scam) का नोटिस है।",
@@ -324,20 +227,20 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
     } else {
       return {
         summary: [
-          "सावधान: ही पूर्णपणे बनावट सायबर फसवणुकीची (Digital Arrest Scam) नोटीस आहे.",
-          "पार्सलमध्ये अमली पदार्थ, सीबीआय किंवा पोलिसांची भीती दाखवून पैसे उकळण्याचा हा प्रयत्न आहे.",
-          "भारतीय कायद्यात 'डिजिटल अरेस्ट' अशी कोणतीही संकल्पना नाही.",
-          "सायबर गुन्हेगार बँक खात्यात किंवा यूपीआयवर त्वरित पैसे पाठवण्याचा दबाव आणत आहेत.",
-          "कोणत्याही परिस्थितीत पैसे पाठवू नका आणि घाबरू नका."
+          "CRITICAL ALERT: Fraudulent extortion attempt (Digital Arrest / Cyber Crime Scam).",
+          "Falsely claims intercepted parcels containing narcotics or money laundering via FedEx/CBI.",
+          "No concept of 'Digital Arrest' or detention over video calls exists in Indian law.",
+          "Perpetrators exert extreme psychological coercion to demand immediate UPI/bank fund transfers.",
+          "Do not transfer any funds or share bank credentials under any circumstances."
         ],
         isScam: true,
         confidence: 0.99,
-        scamReason: "गंभीर सायबर फसवणूक: कोणतीही पोलीस यंत्रणा व्हिडिओ कॉलवर अटक करत नाही किंवा पैशांची मागणी करत नाही.",
-        urgency: "पैसे पाठवू नका! तात्काळ १९३० सायबर हेल्पलाइनवर तक्रार करा.",
+        scamReason: "Dangerous Cyber Extortion: Legitimate Indian law enforcement, CBI, and courts never arrest citizens via video calls or demand direct fund deposits.",
+        urgency: "Transfer zero funds! Report immediately to the National Cybercrime Portal by dialling 1930.",
         nextSteps: [
-          "तात्काळ १९३০ या सायबर गुन्हे हेल्पलाइनवर संपर्क साधा.",
-          "www.cybercrime.gov.in या पोर्टलवर तक्रार नोंदवा.",
-          "संबंधित फोन क्रमांक ब्लॉक करा."
+          "Dial 1930 immediately to log a cybercrime complaint with authorities.",
+          "Lodge an incident report with screenshots on cybercrime.gov.in.",
+          "Sever all communication and block the calling numbers immediately."
         ]
       };
     }
@@ -358,26 +261,7 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
     const subTitle = rawLines[1] || 'Coursework Submission';
     const authorLine = rawLines[2] || 'Student Submission';
 
-    if (lang === 'bengali') {
-      return {
-        summary: [
-          `এটি একটি শিক্ষামূলক অ্যাসাইনমেন্ট বা অ্যাকাডেমিক নথি: "${titleLine}"।`,
-          `বিষয়বস্তু ও বিবরণ: ${subTitle}।`,
-          `শিক্ষার্থী/লেখক তথ্য: ${authorLine}।`,
-          `নথিটিতে কম্পিউটার সায়েন্স ও অপারেটিং সিস্টেম সংক্রান্ত কারিগরি ও তাত্ত্বিক বিষয়াদি বর্ণিত হয়েছে।`,
-          `এটি কোনো আইনি নোটিশ, বিরোধ বা চুক্তিনামা নয়; বরং এটি একটি কলেজ/বিশ্ববিদ্যালয় সংক্রান্ত পড়াশোনার নথি।`
-        ],
-        isScam: false,
-        confidence: 0.99,
-        scamReason: "নথিটি সম্পূর্ণ বৈধ শিক্ষামূলক অ্যাসাইনমেন্ট। এতে কোনো আইনি বিরোধ, পুলিশী সতর্কতা বা আর্থিক প্রতারণার ঝুঁকি নেই।",
-        urgency: "কোনো আইনি বা আদালতের সময়সীমা নেই (No Legal Urgency)। আপনার কলেজের নির্ধারিত অ্যাসাইনমেন্ট জমার তারিখটি লক্ষ্য রাখুন।",
-        nextSteps: [
-          "অ্যাসাইনমেন্টের কোড ও ফলাফল নির্দেশনা অনুযায়ী সম্পন্ন করুন।",
-          "কোনো আইনজীবী বা আইনি পদক্ষেপের কোনো প্রয়োজন নেই।",
-          "নির্দিষ্ট সময়সীমার মধ্যে শিক্ষক বা পোর্টাল মাধ্যমে জমা দিন।"
-        ]
-      };
-    } else if (lang === 'hindi') {
+    if (lang === 'hindi') {
       return {
         summary: [
           `यह एक शैक्षणिक असाइनमेंट / कॉलेज का दस्तावेज़ है: "${titleLine}"।`,
@@ -399,20 +283,20 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
     } else {
       return {
         summary: [
-          `हा एक शैक्षणिक असाइनमेंट किंवा कॉलेजचा अभ्यास दस्तऐवज आहे: "${titleLine}".`,
-          `विषय व तपशील: ${subTitle}.`,
-          `विद्यार्थी / लेखक तपशील: ${authorLine}.`,
-          `दस्तऐवजात ऑपरेटिंग सिस्टीम आणि संगणक शास्त्रातील तांत्रिक संकल्पनांची माहिती दिली आहे.`,
-          `ही कोणतीही कायदेशीर नोटीस किंवा न्यायालयीन समन्स नाही; तर हा एक अभ्यासाचा दस्तऐवज आहे.`
+          `Academic coursework submission or educational document: "${titleLine}".`,
+          `Topic & Module: ${subTitle}.`,
+          `Student / Author: ${authorLine}.`,
+          `Contains academic computer science and operating systems curriculum material.`,
+          `Not a legal notice, court summons, or contract; purely educational coursework.`
         ],
         isScam: false,
         confidence: 0.99,
-        scamReason: "हा दस्तऐवज शैक्षणिक असाइनमेंट आहे. यात कोणताही कायदेशीर वाद किंवा फसवणूक नाही.",
-        urgency: "कोणतीही कायदेशीर निकड नाही (No Legal Urgency). केवळ कॉलेजच्या अंतिम मुदतीची काळजी घ्या.",
+        scamReason: "Genuine academic assignment. Contains zero legal threats, litigation risks, or financial coercion.",
+        urgency: "No legal urgency. Observe your institution's internal academic deadline.",
         nextSteps: [
-          "असाइनमेंटमधील उत्तरांची आणि निर्देशांची खात्री करा.",
-          "कोणत्याही वकिलाच्या सल्ल्याची गरज नाही.",
-          "वेळेवर प्राध्यापकांकडे किंवा पोर्टलवर सबमिट करा."
+          "Review code and lab experiment outputs against course requirements.",
+          "No legal counsel or police intervention required.",
+          "Submit via your university or college academic portal."
         ]
       };
     }
@@ -422,26 +306,7 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
   const lines = rawText.split('\n').filter(l => l.trim().length > 3);
   const sampleLines = lines.slice(0, 5);
 
-  if (lang === 'bengali') {
-    return {
-      summary: [
-        `নথির শিরোনাম/বিষয়: ${lines[0] || 'আইনি দলিল/নোটিশ'}`,
-        `চিহ্নিত মূল পক্ষ/প্রাপক: ${lines[1] || lines[2] || 'নির্দিষ্ট ব্যক্তি বা প্রতিষ্ঠান'}`,
-        `নথিতে বর্ণিত বক্তব্য: ${sampleLines[2] || 'আইনি শর্তাবলী ও অনুচ্ছেদসমূহ'}`,
-        `দাবির প্রাসঙ্গিক অংশ: ${sampleLines[3] || 'স্বাক্ষরিত ধারা বা বাধ্যবাধকতা'}`,
-        `নথিটি ভারতীয় প্রযোজ্য আইনি কাঠামোর অধীনে খতিয়ে দেখার উপযোগী।`
-      ],
-      isScam: false,
-      confidence: 0.85,
-      scamReason: "নথিটিতে প্রাথমিক দৃষ্টিতে কোনো স্পষ্ট জালিয়াতি বা সাইবার প্রতারণার নিদর্শন পাওয়া যায়নি। তবে কোনো চুক্তিতে সই করার পূর্বে আইনজীবীর পরামর্শ নেওয়া উচিত।",
-      urgency: "নথিতে বর্ণিত নির্দিষ্ট তারিখ বা বিজ্ঞপ্তির ভিত্তিতে পদক্ষেপ নিন।",
-      nextSteps: [
-        "নথির সমস্ত পৃষ্ঠার স্বাক্ষর ও তারিখ সতর্কতার সাথে পড়ুন।",
-        "প্রয়োজনে একজন নিবন্ধিত আইনজীবীর কাছে নথির সত্যতা যাচাই করান।",
-        "নথির মূল কপি নিজের কাছে সুরক্ষিত রাখুন।"
-      ]
-    };
-  } else if (lang === 'hindi') {
+  if (lang === 'hindi') {
     return {
       summary: [
         `दस्तावेज़ का विषय/शीर्षक: ${lines[0] || 'कानूनी दस्तावेज़/नोटिस'}`,
@@ -463,20 +328,20 @@ function analyzeExtractedLegalText(rawText, language = 'bengali') {
   } else {
     return {
       summary: [
-        `दस्तऐवजाचा विषय/शीर्षक: ${lines[0] || 'कायदेशीर दस्तऐवज/नोटीस'}`,
-        `संबंधित मुख्य व्यक्ती/प्राप्तकर्ता: ${lines[1] || lines[2] || 'उल्लेखित व्यक्ती किंवा संस्था'}`,
-        `दस्तऐवजातील मुख्य मजकूर: ${sampleLines[2] || 'कायदेशीर अटी व शर्ती'}`,
-        `तरतुदीचा महत्त्वाचा भाग: ${sampleLines[3] || 'स्वाक्षरी केलेले नियम'}`,
-        `हा दस्तऐवज भारतीय कायद्यानुसार पडताळणी योग्य आहे.`
+        `Document Title / Subject: ${lines[0] || 'Legal Instrument / Notice'}.`,
+        `Identified Parties: ${lines[1] || lines[2] || 'Designated Parties or Entities'}.`,
+        `Operative Recitals: ${sampleLines[2] || 'Standard covenants and legal provisions'}.`,
+        `Key Clause: ${sampleLines[3] || 'Execution conditions or contractual obligations'}.`,
+        `Document appears structured for review under relevant Indian statutory provisions.`
       ],
       isScam: false,
       confidence: 0.85,
-      scamReason: "दस्तऐवजात वरवर पाहता कोणत्याही फसवणुकीचे किंवा गैरप्रकाराचे घटक आढळलेले नाहीत.",
-      urgency: "दस्तऐवजात नमूद केलेल्या अंतिम मुदतीनुसार कार्यवाही करावी.",
+      scamReason: "No prima facie indicators of extortion or cyber fraud identified. Consult an advocate prior to formal execution.",
+      urgency: "Review covenants against the effective dates stated in the instrument.",
       nextSteps: [
-        "दस्तऐवजावरील सर्व तारखा व अटींची तपासणी करा.",
-        "वकिलांच्या मदतीने दस्तऐवजाची खात्री करा.",
-        "मूळ प्रत सुरक्षित ठेवा."
+        "Examine all clauses, execution dates, and annexed schedules carefully.",
+        "Verify legal enforceability with a qualified advocate.",
+        "Preserve original signed copies in secure records."
       ]
     };
   }
@@ -536,14 +401,14 @@ exports.handler = async (event) => {
       };
     }
 
-    // Route: Amazon Polly Neural Hindi Voiceover
+    // Route: Amazon Polly Neural Voiceover (Indian English or Hindi)
     if (body.action === 'speak') {
-      const { text, hindiSummary, language = 'hindi' } = body;
-      const normalizedLang = (language || 'hindi').toLowerCase();
-      const languageCode = normalizedLang === 'bengali' ? 'en-IN' : 'hi-IN';
-      const voiceLabel = normalizedLang === 'bengali' 
-        ? 'Kajal (Neural Indian English)' 
-        : (normalizedLang === 'marathi' ? 'Kajal (Neural Marathi)' : 'Kajal (Neural Hindi)');
+      const { text, hindiSummary, language = 'english' } = body;
+      const normalizedLang = (language || 'english').toLowerCase();
+      const languageCode = normalizedLang === 'hindi' ? 'hi-IN' : 'en-IN';
+      const voiceLabel = languageCode === 'hi-IN' 
+        ? 'Kajal (Neural Hindi)' 
+        : 'Kajal (Neural Indian English)';
       
       console.log(`[Amazon Polly] Synthesizing human-like neural voiceover for ${normalizedLang} (${languageCode})...`);
 
@@ -601,10 +466,8 @@ exports.handler = async (event) => {
     }
 
     // Route 2: Analyze Document
-    const { s3Key, fileName = 'document.jpg', language = 'bengali', imageBase64 } = body;
-    const normalizedLang = ['marathi', 'hindi', 'bengali'].includes(language.toLowerCase()) 
-      ? language.toLowerCase() 
-      : 'bengali';
+    const { s3Key, fileName = 'document.jpg', language = 'english', imageBase64 } = body;
+    const normalizedLang = (language || 'english').toLowerCase() === 'hindi' ? 'hindi' : 'english';
 
     let extractedText = '';
     let analysisResult = null;

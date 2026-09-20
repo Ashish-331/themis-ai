@@ -1,35 +1,44 @@
 import React from 'react';
-import { Upload } from 'lucide-react';
+import { Scale, Upload, ShieldCheck, Headphones } from 'lucide-react';
 
-export default function EmptyState() {
+export default function EmptyState({ t }) {
   return (
-    <div className="bg-white border border-stone-200 rounded-2xl p-8 sm:p-10 shadow-xs flex flex-col items-center text-center">
-      <div className="w-18 h-18 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 mb-5">
-        <Upload className="w-8 h-8" />
+    <div className="premium-card rounded-2xl p-8 sm:p-10 flex flex-col items-center text-center">
+      <div className="w-16 h-16 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-center justify-center text-amber-700 mb-5 shadow-2xs">
+        <Scale className="w-8 h-8 stroke-[1.75]" />
       </div>
-      <h3 className="text-xl font-semibold text-stone-900">
-        कोई भी कागज़ डालो, हम बताएंगे क्या है
+      
+      <h3 className="text-2xl sm:text-3xl font-display text-stone-900 tracking-tight">
+        {t.emptyTitle}
       </h3>
-      <p className="text-sm text-stone-500 max-w-md mt-1.5 leading-relaxed">
-        कठिन कानूनी भाषा को आपकी मातृभाषा में 5 आसान बिंदुओं में समझें — और फर्जीवाड़े से बचें।
+      <p className="text-xs sm:text-sm text-stone-500 max-w-lg mt-2 leading-relaxed">
+        {t.emptyDesc}
       </p>
 
-      {/* 3 Step Visual */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full mt-8 pt-6 border-t border-stone-100 text-left">
-        <div className="p-4 rounded-xl bg-stone-50 border border-stone-200/70">
-          <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">कदम १</span>
-          <h4 className="text-sm font-semibold text-stone-900 mt-2">फोटो या PDF दें</h4>
-          <p className="text-xs text-stone-600 mt-1">मोबाइल से फोटो खींचें या फाइल अपलोड करें।</p>
+      {/* 3 Step Editorial Guide */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 w-full mt-8 pt-6 border-t border-stone-100 text-left">
+        <div className="p-4 rounded-xl bg-[#FAF8F5]/80 border border-stone-200/70 hover:border-stone-300 transition-colors">
+          <div className="w-7 h-7 rounded-lg bg-amber-100/70 text-amber-900 flex items-center justify-center text-xs font-bold mb-3">
+            <Upload className="w-3.5 h-3.5" />
+          </div>
+          <h4 className="text-xs font-bold text-stone-900">{t.step1Title}</h4>
+          <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">{t.step1Desc}</p>
         </div>
-        <div className="p-4 rounded-xl bg-stone-50 border border-stone-200/70">
-          <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">कदम २</span>
-          <h4 className="text-sm font-semibold text-stone-900 mt-2">मातृभाषा चुनें</h4>
-          <p className="text-xs text-stone-600 mt-1">हिंदी, बांग्ला या मराठी में सरलीकरण पाएं।</p>
+
+        <div className="p-4 rounded-xl bg-[#FAF8F5]/80 border border-stone-200/70 hover:border-stone-300 transition-colors">
+          <div className="w-7 h-7 rounded-lg bg-amber-100/70 text-amber-900 flex items-center justify-center text-xs font-bold mb-3">
+            <ShieldCheck className="w-3.5 h-3.5" />
+          </div>
+          <h4 className="text-xs font-bold text-stone-900">{t.step2Title}</h4>
+          <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">{t.step2Desc}</p>
         </div>
-        <div className="p-4 rounded-xl bg-stone-50 border border-stone-200/70">
-          <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">कदम ३</span>
-          <h4 className="text-sm font-semibold text-stone-900 mt-2">सुनें व समझें</h4>
-          <p className="text-xs text-stone-600 mt-1">Amazon Polly की प्राकृतिक आवाज में सुनें।</p>
+
+        <div className="p-4 rounded-xl bg-[#FAF8F5]/80 border border-stone-200/70 hover:border-stone-300 transition-colors">
+          <div className="w-7 h-7 rounded-lg bg-amber-100/70 text-amber-900 flex items-center justify-center text-xs font-bold mb-3">
+            <Headphones className="w-3.5 h-3.5" />
+          </div>
+          <h4 className="text-xs font-bold text-stone-900">{t.step3Title}</h4>
+          <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">{t.step3Desc}</p>
         </div>
       </div>
     </div>

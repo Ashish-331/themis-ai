@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, FileText, CheckCircle2, X, RefreshCw, ArrowRight } from 'lucide-react';
+import { Camera, FileText, CheckCircle2, X, RefreshCw, ArrowRight, UploadCloud } from 'lucide-react';
 
 export default function UploadZone({
   selectedFile,
@@ -12,26 +12,33 @@ export default function UploadZone({
   handleFileChange,
   handleRemoveFile,
   handleAnalyze,
-  isAnalyzing
+  isAnalyzing,
+  t
 }) {
   return (
-    <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs">
-      <h3 className="font-semibold text-stone-900 text-base mb-1.5">
-        दस्तावेज़ अपलोड करें
-      </h3>
-      <p className="text-xs text-stone-500 mb-4">
-        कोर्ट समन, रेंट एग्रीमेंट, पुलिस नोटिस या संदिग्ध बैंक पत्र का फोटो लें या PDF अपलोड करें।
+    <div className="premium-card rounded-2xl p-6">
+      <div className="flex items-center justify-between mb-1.5">
+        <h3 className="font-bold text-stone-900 text-sm tracking-tight">
+          {t.uploadTitle}
+        </h3>
+        <span className="text-[10px] uppercase font-mono tracking-wider text-stone-400 bg-stone-100 px-2 py-0.5 rounded">
+          OCR & AI
+        </span>
+      </div>
+      <p className="text-xs text-stone-500 mb-4 leading-relaxed">
+        {t.uploadDesc}
       </p>
 
+      {/* Interactive Dropzone */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors ${
+        className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all ${
           isDragging
-            ? 'border-amber-600 bg-amber-50/50'
-            : 'border-stone-300 hover:border-amber-600/70 bg-stone-50/70'
+            ? 'border-amber-600 bg-amber-50/50 scale-[1.005]'
+            : 'border-stone-300/80 hover:border-amber-600/70 bg-[#FAF8F5]/80 hover:bg-[#FAF8F5]'
         }`}
       >
         <input
@@ -42,38 +49,38 @@ export default function UploadZone({
           onChange={handleFileChange}
           className="hidden"
         />
-        <div className="w-12 h-12 rounded-full bg-white border border-stone-200 flex items-center justify-center text-amber-700 shadow-xs mb-3">
-          <Camera className="w-6 h-6" />
+        <div className="w-12 h-12 rounded-2xl bg-white border border-stone-200 shadow-xs flex items-center justify-center text-amber-700 mb-3">
+          <UploadCloud className="w-6 h-6" />
         </div>
-        <span className="text-sm font-semibold text-stone-800 text-center">
-          फोटो खींचें या फाइल चुनें
+        <span className="text-xs font-bold text-stone-800 text-center tracking-tight">
+          {isDragging ? t.dragDropActive : t.dragDropText}
         </span>
-        <span className="text-xs text-stone-500 mt-1">
-          Camera, PNG, JPG, PDF (अधिकतम 10MB)
+        <span className="text-[11px] text-stone-400 mt-1 font-mono">
+          {t.supportedFormats}
         </span>
       </div>
 
-      {/* Selected File Preview Card */}
+      {/* Selected File Card */}
       {selectedFile && (
-        <div className="mt-4 p-3 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-between">
+        <div className="mt-4 p-3 bg-stone-50 border border-stone-200/80 rounded-xl flex items-center justify-between">
           <div className="flex items-center space-x-3 overflow-hidden">
             {filePreview && filePreview !== 'PDF' ? (
               <img
                 src={filePreview}
                 alt="Document Preview"
-                className="w-12 h-12 object-cover rounded-lg border border-stone-300 flex-shrink-0"
+                className="w-12 h-12 object-cover rounded-lg border border-stone-300/80 flex-shrink-0 shadow-2xs"
               />
             ) : (
-              <div className="w-12 h-12 rounded-lg bg-amber-100 border border-amber-300 flex flex-col items-center justify-center text-amber-900 flex-shrink-0 font-bold text-xs">
-                <FileText className="w-5 h-5" />
+              <div className="w-12 h-12 rounded-lg bg-amber-100/70 border border-amber-200 flex flex-col items-center justify-center text-amber-900 flex-shrink-0 font-bold text-[11px] font-mono">
+                <FileText className="w-5 h-5 mb-0.5" />
                 <span>PDF</span>
               </div>
             )}
             <div className="truncate">
-              <p className="text-sm font-semibold text-stone-900 truncate">{selectedFile.name}</p>
-              <p className="text-xs text-stone-500 flex items-center space-x-1">
+              <p className="text-xs font-bold text-stone-900 truncate tracking-tight">{selectedFile.name}</p>
+              <p className="text-[11px] text-stone-500 flex items-center space-x-1 mt-0.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>जांच के लिए तैयार</span>
+                <span>{t.readyToAnalyze}</span>
               </p>
             </div>
           </div>
@@ -82,10 +89,10 @@ export default function UploadZone({
               e.stopPropagation();
               handleRemoveFile();
             }}
-            className="text-stone-400 hover:text-rose-600 p-1 rounded-md transition-colors"
-            title="Remove file"
+            className="text-stone-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-stone-100 transition-colors cursor-pointer"
+            title="Remove document"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -94,21 +101,21 @@ export default function UploadZone({
       <button
         disabled={!selectedFile || isAnalyzing}
         onClick={handleAnalyze}
-        className={`w-full mt-5 py-3.5 px-4 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center space-x-2 shadow-xs ${
+        className={`w-full mt-5 py-3.5 px-4 rounded-xl font-bold text-xs tracking-tight transition-all flex items-center justify-center space-x-2 shadow-xs cursor-pointer ${
           !selectedFile || isAnalyzing
-            ? 'bg-stone-200 text-stone-500 cursor-not-allowed'
-            : 'bg-stone-900 hover:bg-stone-800 text-white active:scale-[0.99]'
+            ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
+            : 'bg-[#181614] hover:bg-stone-800 text-white active:scale-[0.99] border border-stone-800'
         }`}
       >
         {isAnalyzing ? (
           <>
             <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
-            <span>दस्तावेज़ की जांच जारी है...</span>
+            <span>{t.analyzingBtn}</span>
           </>
         ) : (
           <>
             <ArrowRight className="w-4 h-4 text-amber-400" />
-            <span>5 बिंदुओं में समझें</span>
+            <span>{t.btnAnalyze}</span>
           </>
         )}
       </button>

@@ -13,12 +13,13 @@ import ArchitectureModal from './components/ArchitectureModal';
 import Footer from './components/Footer';
 
 import { SAMPLE_DOCS } from './data/sampleDocs';
+import { TRANSLATIONS } from './data/translations';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('analyze'); // 'analyze' | 'history'
-  const [language, setLanguage] = useState('hindi'); // 'hindi' | 'bengali' | 'marathi'
+  const [language, setLanguage] = useState('english'); // 'english' (default) | 'hindi'
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
@@ -36,6 +37,9 @@ export default function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [showArchModal, setShowArchModal] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Active translation dictionary
+  const t = TRANSLATIONS[language] || TRANSLATIONS.english;
 
   // Stepper animation timer during analysis
   useEffect(() => {
@@ -83,12 +87,12 @@ export default function App() {
     }
   }, [activeTab]);
 
-  // Compress large images in browser to avoid Lambda 6MB payload limits
+  // Compress large images in browser to avoid Lambda payload limits
   const processFile = (file) => {
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
-      setErrorMessage('File size exceeds 10MB. Please select a smaller document.');
+      setErrorMessage('File size exceeds 10MB limit. Please select a smaller document scan.');
       return;
     }
 
@@ -109,7 +113,7 @@ export default function App() {
       return;
     }
 
-    // Image compression via Canvas
+    // Canvas image compression
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
@@ -264,30 +268,24 @@ export default function App() {
     setIsSynthesizingSpeech(true);
     setErrorMessage(null);
 
-    const currentLang = (analysisResult.language || language || 'hindi').toLowerCase();
+    const currentLang = (analysisResult.language || language || 'english').toLowerCase();
     const firstPoint = analysisResult.summary[0] || '';
     const secondPoint = analysisResult.summary[1] || '';
     
     let narrationScript = '';
-    if (currentLang === 'marathi') {
-      const verdict = analysisResult.isScam 
-        ? 'सावधान: हा एक संशयास्पद किंवा अनधिकृत दस्तऐवज आहे.' 
-        : 'हा एक अधिकृत कायदेशीर दस्तऐवज आहे.';
-      const urgency = analysisResult.urgency ? `वेळ मर्यादा: ${analysisResult.urgency}.` : '';
-      narrationScript = `नमस्कार. थेमिस कायदेशीर सहाय्यक. ${verdict} मुख्य मुद्दे: ${firstPoint}. ${secondPoint}. ${urgency} अधिक माहितीसाठी वकिलांचा सल्ला घ्या.`;
-    } else if (currentLang === 'bengali') {
-      const verdict = analysisResult.isScam 
-        ? 'Warning: This document appears to be suspicious or fraudulent.' 
-        : 'This appears to be a legitimate legal document.';
-      const urgency = analysisResult.urgency ? `Urgency: ${analysisResult.urgency}.` : '';
-      narrationScript = `Hello, this is Themis Legal Assistant. ${verdict} Key point: ${firstPoint}. ${urgency} For full verification, please consult a verified legal advocate.`;
-    } else {
-      // Default Hindi
+    if (currentLang === 'hindi') {
       const verdict = analysisResult.isScam 
         ? 'सावधान: यह एक संदिग्ध या अनाधिकारिक दस्तावेज़ है।' 
         : 'यह एक वैध कानूनी दस्तावेज़ है।';
       const urgency = analysisResult.urgency ? `समय सीमा: ${analysisResult.urgency}।` : '';
       narrationScript = `नमस्ते। थेमिस कानूनी सहायक। ${verdict} मुख्य बातें: ${firstPoint}। ${secondPoint}। ${urgency} अधिक जानकारी के लिए वकील से परामर्श लें।`;
+    } else {
+      // Default English
+      const verdict = analysisResult.isScam 
+        ? 'Warning: This document appears to be suspicious or fraudulent.' 
+        : 'This document appears to be a legitimate legal instrument.';
+      const urgency = analysisResult.urgency ? `Urgency and timeline: ${analysisResult.urgency}.` : '';
+      narrationScript = `Hello, this is Themis Legal Assistant. ${verdict} Key takeaways: ${firstPoint}. ${secondPoint}. ${urgency} For full legal verification, please consult a qualified advocate.`;
     }
 
     try {
@@ -345,14 +343,20 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF9F5] text-stone-900 flex flex-col font-sans">
-      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className="min-h-screen bg-[#FAF8F5] text-stone-900 flex flex-col font-sans selection:bg-amber-500/20 selection:text-amber-950">
+      <Header
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        language={language}
+        setLanguage={setLanguage}
+        t={t}
+      />
 
       {/* Error Alert Bar */}
       {errorMessage && (
-        <div className="bg-rose-50 border-b border-rose-200 px-4 py-3 text-rose-800 text-sm flex items-center justify-between">
+        <div className="bg-rose-50 border-b border-rose-200 px-4 py-3 text-rose-800 text-xs sm:text-sm flex items-center justify-between">
           <div className="flex items-center space-x-2 max-w-6xl mx-auto w-full">
-            <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+            <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
             <span className="font-medium">{errorMessage}</span>
           </div>
           <button
@@ -367,11 +371,11 @@ export default function App() {
       {/* Main Content Area */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8">
         {activeTab === 'analyze' && (
-          <div className="space-y-8">
-            <LanguageSelector language={language} setLanguage={setLanguage} />
+          <div className="space-y-6">
+            <LanguageSelector language={language} setLanguage={setLanguage} t={t} />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              {/* Left Column: Upload & Quick Samples */}
+              {/* Left Column: Upload & Verified Samples */}
               <div className="lg:col-span-5 space-y-6">
                 <UploadZone
                   selectedFile={selectedFile}
@@ -385,19 +389,22 @@ export default function App() {
                   handleRemoveFile={handleRemoveFile}
                   handleAnalyze={handleAnalyze}
                   isAnalyzing={isAnalyzing}
+                  t={t}
                 />
 
                 <SampleDocs
                   sampleDocs={SAMPLE_DOCS}
                   onSelectSample={handleSelectSample}
+                  language={language}
+                  t={t}
                 />
               </div>
 
               {/* Right Column: Dynamic Analysis Output */}
               <div className="lg:col-span-7">
-                {!analysisResult && !isAnalyzing && <EmptyState />}
+                {!analysisResult && !isAnalyzing && <EmptyState t={t} />}
 
-                {isAnalyzing && <AnalysisProgress analysisStep={analysisStep} />}
+                {isAnalyzing && <AnalysisProgress analysisStep={analysisStep} t={t} />}
 
                 {analysisResult && !isAnalyzing && (
                   <AnalysisResultView
@@ -406,6 +413,8 @@ export default function App() {
                     isSynthesizingSpeech={isSynthesizingSpeech}
                     toggleSpeech={toggleSpeech}
                     hasCachedAudio={Boolean(audioCache[getDocKey(analysisResult)])}
+                    t={t}
+                    language={language}
                   />
                 )}
               </div>
@@ -422,15 +431,18 @@ export default function App() {
               setAnalysisResult(doc);
               setActiveTab('analyze');
             }}
+            t={t}
+            language={language}
           />
         )}
       </main>
 
-      <Footer onOpenArchModal={() => setShowArchModal(true)} />
+      <Footer onOpenArchModal={() => setShowArchModal(true)} t={t} />
 
       <ArchitectureModal
         isOpen={showArchModal}
         onClose={() => setShowArchModal(false)}
+        t={t}
       />
     </div>
   );
