@@ -43,7 +43,10 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: !Ref Stage
-      Cors: "'*'"
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
 
   ThemisDocumentsTable:
     Type: AWS::DynamoDB::Table
