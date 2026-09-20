@@ -9,11 +9,6 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  ::selection {
-    background-color: rgba(217, 119, 6, 0.2);
-    color: #92400e;
-  }
-
   .font-vernacular {
     font-family: 'Noto Sans Devanagari', 'Noto Sans Bengali', 'Inter', sans-serif;
     line-height: 1.8;
