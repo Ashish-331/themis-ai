@@ -6,7 +6,6 @@ local/env.json
 
 # Dependencies
 node_modules/
-package-lock.json
 
 # AWS SAM build artifacts
 .aws-sam/
